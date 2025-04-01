@@ -1,0 +1,22 @@
+{
+  "src/main.css": {
+    "file": "assets/main.css",
+    "src": "src/main.css"
+  },
+  "src/main.tsx": {
+    "css": [
+      "assets/main.css"
+    ],
+    "file": "assets/main.js",
+    "isEntry": true,
+    "src": "src/main.tsx"
+  },
+  "test.html": {
+    "file": "assets/test.js",
+    "imports": [
+      "src/main.tsx"
+    ],
+    "isEntry": true,
+    "src": "test.html"
+  }
+}
