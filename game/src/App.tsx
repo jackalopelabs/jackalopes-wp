@@ -1191,24 +1191,14 @@ const ModelPreloader = () => {
 };
 
 export function App() {
-    // Replace useLoadingAssets with useProgress implementation
-    const { active } = useProgress()
-    const [loading, setLoading] = useState(true)
+    // Immediately set loading to false instead of using useProgress
+    const [loading, setLoading] = useState(false)
     
     // Add state to control Leva panel visibility
     const [levaVisible, setLevaVisible] = useState(false);
     
-    // Handle loading state
-    useEffect(() => {
-        if (!active) {
-            const timeout = setTimeout(() => {
-                setLoading(false)
-            }, 500)
-            return () => clearTimeout(timeout)
-        } else {
-            setLoading(true)
-        }
-    }, [active])
+    // Remove the loading state handling effect as we don't need it anymore
+    // ... existing code ...
     
     // Add key handler for 'O' key to toggle Leva panel
     useEffect(() => {
@@ -4000,7 +3990,7 @@ export function App() {
 
                 <Physics 
                     debug={false} 
-                    paused={loading}
+                    paused={false} // Always run physics, don't pause during loading
                     timeStep={1/240} // Increased physics rate to 240Hz for smoother movement
                     interpolate={true}
                     gravity={[0, -9.81, 0]}>
