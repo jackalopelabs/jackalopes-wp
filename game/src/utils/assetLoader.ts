@@ -10,23 +10,19 @@
  * @param url - The URL to fix
  * @returns The URL with correct protocol
  */
-export const fixProtocol = (url: string): string => {
-  // Skip if already using the same protocol or is a relative URL
-  if (url.startsWith('//') || url.startsWith('./') || url.startsWith('/') || !url.includes('://')) {
+export function fixProtocol(url: string): string {
+  // If already protocol-relative or absolute with protocol, return as is
+  if (url.startsWith('//') || url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
-
-  // Get current protocol
-  const currentProto = window.location.protocol;
   
-  // If we're on HTTPS but URL is HTTP, convert to protocol-relative or HTTPS
-  if (currentProto === 'https:' && url.startsWith('http:')) {
-    // Convert to protocol-relative URL
-    return url.replace('http:', '');
+  // Convert absolute URLs to protocol-relative
+  if (url.startsWith('http:') || url.startsWith('https:')) {
+    return url.replace(/^https?:/, '');
   }
   
   return url;
-};
+}
 
 /**
  * Detect if we're in a development environment
@@ -107,69 +103,25 @@ export const isLocalOrIpBasedHost = (): boolean => {
  * @param path - The asset path relative to assets directory
  * @returns The full path to the asset
  */
-export const getAssetPath = (path: string): string => {
-  // Handle null or undefined paths
-  if (!path) {
-    console.error('[ASSET] Null or undefined path provided');
-    return './assets/fallback.png'; // Return a fallback path
-  }
+export function getAssetPath(relativePath: string): string {
+  // Remove leading slash if present
+  const cleanPath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
   
-  // Special case for fps.glb which might be in the dist root instead of assets directory
-  if (path === 'fps.glb' || path === 'assets/fps.glb') {
-    // In WordPress mode, look in plugin root first, then in assets
-    if (window.jackalopesGameSettings?.pluginUrl) {
-      const pluginUrl = window.jackalopesGameSettings.pluginUrl;
-      // Remove the trailing slash if present to avoid double slashes
-      const normalizedPluginUrl = pluginUrl.endsWith('/') ? pluginUrl.slice(0, -1) : pluginUrl;
-      // Use protocol-relative URL to avoid mixed content
-      return fixProtocol(`${normalizedPluginUrl}/game/dist/fps.glb`);
-    }
-  }
-  
-  // Normalize the path
-  const cleanPath = normalizePath(path);
-  
-  // Debug logs to help troubleshoot path resolution
-  console.log(`[ASSET] Original path: ${path}`);
-  console.log(`[ASSET] Normalized path: ${cleanPath}`);
-  
-  // If running in WordPress, use the assets URL from WordPress settings
-  if (window.jackalopesGameSettings?.assetsUrl) {
-    // Handle WordPress mode
-    const wpUrl = window.jackalopesGameSettings.assetsUrl;
-    // Remove trailing slash if present to avoid double slashes
-    const normalizedWpUrl = wpUrl.endsWith('/') ? wpUrl.slice(0, -1) : wpUrl;
+  // Check if we're in WordPress environment
+  if (typeof window !== 'undefined' && 'jackalopesGameSettings' in window) {
+    const settings = (window as any).jackalopesGameSettings;
     
-    // Fix double "assets" in the path
-    let finalPath = cleanPath;
-    if (finalPath.startsWith('assets/') && normalizedWpUrl.includes('/assets/')) {
-      finalPath = finalPath.substring(7); // Remove the leading "assets/"
+    // Fix duplicated "assets/" in the path
+    if (cleanPath.startsWith('assets/') && settings.assetsUrl.includes('assets')) {
+      return `${settings.assetsUrl}${cleanPath.substring(7)}`;
     }
-
-    // Don't use localhost or IP-based URLs in production (avoid CORS issues)
-    let fullPath = `${normalizedWpUrl}/${finalPath}`;
-    if (isLocalOrIpBasedHost() && !isDevEnvironment()) {
-      // If we're trying to load from localhost in production, use a protocol-relative URL instead
-      const currentDomain = window.location.hostname;
-      fullPath = `//${currentDomain}/app/plugins/jackalopes-wp/game/dist/assets/${finalPath}`;
-    }
-
-    // Ensure URL uses correct protocol to prevent mixed content issues
-    fullPath = fixProtocol(fullPath);
-    console.log(`[ASSET] WordPress path resolved: ${fullPath}`);
-    return fullPath;
+    
+    return `${settings.assetsUrl}${cleanPath}`;
   }
   
-  // In development mode, use the relative path
-  // Handle different path formats from the original game
-  if (cleanPath.startsWith('assets/')) {
-    return `./${cleanPath}`;
-  }
-  
-  const devPath = `./assets/${cleanPath}`;
-  console.log(`[ASSET] Development path resolved: ${devPath}`);
-  return devPath;
-};
+  // Local development
+  return `/${cleanPath}`;
+}
 
 /**
  * Resolve a model path for use in both WordPress and standalone environments

@@ -21,6 +21,7 @@ export interface JackalopesGameSettings {
   containerId?: string;
   isWordPress?: boolean;
   isSecure?: boolean;
+  serverModeEnabled?: boolean;
 }
 
 /**
@@ -33,4 +34,5 @@ export interface JackalopesGameOptions {
   assetsUrl?: string;
   sessionKey?: string;
   debugMode?: boolean;
+  enableServer?: boolean;
 } 

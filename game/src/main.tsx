@@ -185,9 +185,12 @@ function initJackalopesGame(containerId: string, options: JackalopesGameOptions 
   
   // Extract server URL - default to secure WebSocket for HTTPS sites
   const isSecureSite = window.location.protocol === 'https:';
-  const defaultServerUrl = isSecureSite 
+  let defaultServerUrl = isSecureSite 
     ? 'wss://' + window.location.host + '/websocket/' 
     : 'ws://' + window.location.host + '/websocket/';
+  
+  // Configure game to operate in standalone mode if no server is available
+  const serverModeEnabled = options.enableServer !== false;
   
   // Store game settings globally
   window.jackalopesGameSettings = fixGameSettingsProtocol({
@@ -196,7 +199,8 @@ function initJackalopesGame(containerId: string, options: JackalopesGameOptions 
     assetsUrl: options.assetsUrl || '',
     containerId,
     isWordPress: true,
-    isSecure: isSecureSite
+    isSecure: isSecureSite,
+    serverModeEnabled: serverModeEnabled
   });
   
   // Initialize UI containment to ensure elements stay in container
@@ -236,7 +240,8 @@ function initJackalopesGame(containerId: string, options: JackalopesGameOptions 
             serverUrl: gameSettings.serverUrl,
             isFullscreen: gameSettings.isFullscreen,
             isWordPress: true,
-            assetsUrl: gameSettings.assetsUrl
+            assetsUrl: gameSettings.assetsUrl,
+            serverModeEnabled: gameSettings.serverModeEnabled
           } as any}
         />
       </React.StrictMode>

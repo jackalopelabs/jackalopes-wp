@@ -30,6 +30,7 @@ function jackalopes_wp_shortcode_callback($atts) {
             'width' => '100%',
             'height' => '600px',
             'class' => '',
+            'enable_server' => 'true',
         ],
         $atts
     );
@@ -41,11 +42,40 @@ function jackalopes_wp_shortcode_callback($atts) {
         esc_attr($attributes['height'])
     );
     
+    // Convert string 'true'/'false' to boolean for JavaScript
+    $enable_server = ($attributes['enable_server'] === 'true') ? 'true' : 'false';
+    
     // Start output buffering to return HTML
     ob_start();
     ?>
     <div class="jackalopes-game-container <?php echo esc_attr($attributes['class']); ?>" style="<?php echo $custom_css; ?>">
-        <div id="jackalopes-game" data-initialized="false">
+        <script>
+        // Fix asset path issue before game loads
+        (function() {
+            // Helper function to intercept and fix asset fetch requests
+            function fixAssetPaths() {
+                // Store original fetch
+                const originalFetch = window.fetch;
+                
+                // Override fetch
+                window.fetch = function(url, options) {
+                    // Check if this is an asset request with duplicated paths
+                    if (typeof url === 'string' && url.includes('/assets/assets/')) {
+                        // Fix the duplicated path
+                        url = url.replace('/assets/assets/', '/assets/');
+                        console.log('Fixed asset path:', url);
+                    }
+                    // Call original fetch with fixed URL
+                    return originalFetch.call(this, url, options);
+                };
+            }
+            
+            // Apply the fix
+            fixAssetPaths();
+        })();
+        </script>
+        
+        <div id="jackalopes-game" data-initialized="false" data-enable-server="<?php echo esc_attr($enable_server); ?>">
             <div class="game-loading">
                 <p class="loading-message">Loading Jackalopes Game...</p>
                 <div class="loading-spinner"></div>

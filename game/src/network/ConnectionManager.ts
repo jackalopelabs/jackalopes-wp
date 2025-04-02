@@ -188,81 +188,74 @@ export class ConnectionManager extends EventEmitter {
     try {
       this.log(LogLevel.INFO, 'Connecting to WebSocket server at', this.serverUrl);
       
-      // Cleanup any existing socket first
-      if (this.socket) {
-        this.disconnect();
+      // Skip server connection if explicitly disabled
+      if (window.jackalopesGameSettings?.serverModeEnabled === false) {
+        this.log(LogLevel.INFO, "Server mode disabled, running in local mode");
+        this.handleDisconnect(true); // Pass true to indicate it's intentional
+        return;
       }
       
-      // Reset offline mode flag for new connection attempt
-      this.offlineMode = false;
-      this.connectionFailed = false;
-      
-      // Check for dev server reachability
-      if (this.serverUrl.includes('localhost')) {
-        this.log(LogLevel.INFO, 'Trying to connect to development server - checking availability first...');
+      // First check if the server is available
+      if (this.serverUrl.startsWith('ws://') || this.serverUrl.startsWith('wss://')) {
+        this.log(LogLevel.INFO, "- checking availability first...");
         this.checkServerAvailability();
       } else {
         this.createWebSocketConnection();
       }
-    } catch (error) {
-      this.log(LogLevel.ERROR, 'Error connecting to WebSocket server:', error);
-      // If we failed to connect, attempt reconnect
+    } catch (e) {
+      this.log(LogLevel.ERROR, 'Error connecting to WebSocket server:', e);
       this.handleDisconnect();
     }
   }
   
   private checkServerAvailability(): void {
-    // Try a basic fetch to check if the domain is accessible
-    // Extract domain from the serverUrl
-    const urlMatch = this.serverUrl.match(/^(ws:\/\/|wss:\/\/)([^\/]*)/);
-    if (!urlMatch) {
-      this.log(LogLevel.ERROR, 'Invalid server URL format');
+    const matches = this.serverUrl.match(/^(ws:\/\/|wss:\/\/)([^\/]*)/);
+    
+    if (!matches) {
+      this.log(LogLevel.ERROR, "Invalid server URL format");
       this.handleDisconnect();
       return;
     }
     
-    const domain = urlMatch[2]; // Extract the domain part
-    const protocol = this.serverUrl.startsWith('wss://') ? 'https://' : 'http://';
+    const host = matches[2];
+    const isSecure = this.serverUrl.startsWith('wss://');
+    const protocol = isSecure ? 'https://' : 'http://';
     
-    // Use a controller to abort the fetch after a timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+    // Create a health check URL - default to /health-check
+    let healthCheckPath = '/health-check';
     
-    fetch(`${protocol}${domain}/health-check`, { 
+    // Replace /websocket with /health-check if present
+    if (this.serverUrl.includes('/websocket')) {
+      healthCheckPath = this.serverUrl.replace(/\/websocket.*$/, '/health-check');
+    } else {
+      healthCheckPath = `${protocol}${host}/health-check`;
+    }
+    
+    this.log(LogLevel.INFO, `Health check URL: ${healthCheckPath}`);
+    
+    // Use fetch to check server availability
+    fetch(healthCheckPath, { 
       method: 'HEAD',
-      mode: 'no-cors',
-      cache: 'no-store',
-      signal: controller.signal
+      mode: 'cors',
+      cache: 'no-cache',
+      headers: {
+        'pragma': 'no-cache',
+        'cache-control': 'no-cache'
+      },
     })
-    .then(() => {
-      clearTimeout(timeoutId);
-      // If we can reach the domain, try the WebSocket connection
-      this.log(LogLevel.INFO, `Domain ${domain} is reachable, attempting WebSocket connection...`);
-      this.createWebSocketConnection();
-    })
-    .catch((error) => {
-      clearTimeout(timeoutId);
-      
-      // Don't log detailed fetch errors - they're noisy and not helpful
-      this.log(LogLevel.INFO, `Server ${domain} not available - using offline mode`);
-      
-      // Throttle server_unreachable events to avoid spamming
-      if (!this.lastErrorTime || (Date.now() - this.lastErrorTime) > 10000) {
-        this.lastErrorTime = Date.now();
-        this.connectionFailed = true;
-        this.offlineMode = true;
-        this.emit('server_unreachable', { server: this.serverUrl });
-        setTimeout(() => this.forceReady(), 500);
-      }
-    });
-    
-    // Also set a short timeout in case fetch hangs
-    setTimeout(() => {
-      if (!this.isConnected && !this.offlineMode) {
-        this.log(LogLevel.INFO, 'Server availability check timed out, creating WebSocket connection anyway...');
+    .then(response => {
+      if (response.ok) {
+        this.log(LogLevel.INFO, "Server is available, connecting...");
         this.createWebSocketConnection();
+      } else {
+        this.log(LogLevel.ERROR, `Server responded with status: ${response.status}`);
+        this.fallbackToLocalMode();
       }
-    }, 3000);
+    })
+    .catch(error => {
+      this.log(LogLevel.ERROR, "Server health check failed:", error);
+      this.fallbackToLocalMode();
+    });
   }
   
   private createWebSocketConnection(): void {
@@ -1122,25 +1115,21 @@ export class ConnectionManager extends EventEmitter {
 
   // Add the missing methods
 
-  private handleDisconnect(): void {
+  private handleDisconnect(intentional: boolean = false): void {
     this.isConnected = false;
-    this.emit('disconnected');
-    this.log(LogLevel.INFO, 'Disconnected from server');
+    this.isConnecting = false;
     
-    // Stop ping interval
-    this.stopPingInterval();
-    
-    // Stop keep-alive interval
-    this.stopKeepAliveInterval();
-    
-    // Clear any existing reconnect timeout
-    this.clearReconnectTimeout();
-    
-    // Try to reconnect
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      setTimeout(() => this.connect(), this.reconnectInterval);
+    // Clear any existing connection
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
     }
+    
+    // Notify listeners about disconnection
+    this.emit('disconnected', {
+      reason: intentional ? 'local_mode' : 'connection_error',
+      intentional
+    });
   }
 
   private handleError(error: Event): void {
@@ -1351,5 +1340,23 @@ export class ConnectionManager extends EventEmitter {
     // Generate a random ID
     this.playerId = `player-${Math.random().toString(36).substring(2, 9)}`;
     this.log(LogLevel.INFO, `Created player ID: ${this.playerId}`);
+  }
+
+  // Add a method to handle server unavailability
+  private fallbackToLocalMode(): void {
+    // Dispatch an event to notify the game about server unavailability
+    const event = new CustomEvent('server_unreachable', {
+      detail: { serverUrl: this.serverUrl }
+    });
+    window.dispatchEvent(event);
+    
+    // Set a timeout to retry the connection
+    this.reconnectTimeout = window.setTimeout(() => {
+      this.log(LogLevel.INFO, "Retrying connection to server...");
+      this.connect();
+    }, 10000); // Retry every 10 seconds
+    
+    // Proceed with disconnected state
+    this.handleDisconnect(true); // true = intentional disconnect (local mode)
   }
 } 

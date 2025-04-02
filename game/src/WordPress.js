@@ -33,11 +33,16 @@ function initializeGame() {
     return;
   }
   
+  // Check if server should be enabled
+  const enableServer = gameContainer.getAttribute('data-enable-server') !== 'false';
+  
   // Check if main.js has loaded and the initJackalopesGame function exists
   if (typeof window.initJackalopesGame === 'function') {
     try {
       console.log('Initializing Jackalopes game');
-      window.initJackalopesGame('jackalopes-game', {});
+      window.initJackalopesGame('jackalopes-game', {
+        enableServer: enableServer
+      });
       gameContainer.setAttribute('data-initialized', 'true');
       hideLoading();
     } catch (error) {
