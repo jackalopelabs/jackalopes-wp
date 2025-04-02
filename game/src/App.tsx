@@ -1358,7 +1358,8 @@ export function App() {
         
         // Check if we're on staging or production
         if (hostname.includes('staging.games.bonsai.so') || hostname.includes('bonsai.so')) {
-            serverUrl = `wss://${hostname}/websocket/`;
+            serverUrl = `http://${hostname}/websocket/`;
+            console.log(`Using Bonsai staging HTTP server: ${serverUrl}`);
         } else if (hostname === 'localhost' || hostname.includes('bonsai.test')) {
             // For local development environments
             serverUrl = window.location.protocol === 'https:' 

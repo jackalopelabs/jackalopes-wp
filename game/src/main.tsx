@@ -231,8 +231,8 @@ function initJackalopesGame(containerId: string, options: JackalopesGameOptions 
   // Check if we're on staging or production Bonsai domain
   const hostname = window.location.hostname;
   if (hostname.includes('staging.games.bonsai.so') || hostname.includes('bonsai.so')) {
-    defaultServerUrl = `wss://${hostname}/websocket/`;
-    console.log(`Using Bonsai staging WebSocket server: ${defaultServerUrl}`);
+    defaultServerUrl = `http://${hostname}/websocket/`;
+    console.log(`Using Bonsai staging HTTP server: ${defaultServerUrl}`);
   }
   
   // Configure game to operate in standalone mode if no server is available

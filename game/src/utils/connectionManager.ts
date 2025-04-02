@@ -66,7 +66,8 @@ export class ConnectionManager {
    */
   constructor(serverUrl: string, isWordPress: boolean = false) {
     // Use the provided URL or fallback to the staging server
-    this.serverUrl = serverUrl || 'ws://staging.games.bonsai.so/websocket/';
+    this.serverUrl = serverUrl || 'http://staging.games.bonsai.so/websocket/';
+    console.log(`ConnectionManager initialized with serverUrl: ${this.serverUrl}`);
     this.isWordPress = isWordPress;
     
     // Initialize event listeners
@@ -159,7 +160,18 @@ export class ConnectionManager {
   private establishConnection(): Promise<boolean> {
     return new Promise((resolve, reject) => {
       try {
-        this.socket = new WebSocket(this.serverUrl);
+        // Convert HTTP URLs to WebSocket URLs if needed
+        let websocketUrl = this.serverUrl;
+        if (websocketUrl.startsWith('http://')) {
+          websocketUrl = websocketUrl.replace('http://', 'ws://');
+          console.log(`Converting HTTP URL to WebSocket URL: ${websocketUrl}`);
+        } else if (websocketUrl.startsWith('https://')) {
+          websocketUrl = websocketUrl.replace('https://', 'wss://');
+          console.log(`Converting HTTPS URL to WebSocket URL: ${websocketUrl}`);
+        }
+        
+        console.log(`Creating WebSocket connection to: ${websocketUrl}`);
+        this.socket = new WebSocket(websocketUrl);
         
         // Set connection timeout
         const connectionTimeout = setTimeout(() => {
@@ -865,19 +877,33 @@ export class ConnectionManager {
    * Check server availability
    */
   private checkServerAvailability(): Promise<boolean> {
-    // Convert WebSocket URL to HTTP for health check
-    const healthCheckUrl = this.serverUrl.replace('ws://', 'http://').replace('wss://', 'https://').replace('/websocket/', '/health-check');
+    // Determine health check URL based on the server URL
+    let healthCheckUrl = '';
+    
+    if (this.serverUrl.startsWith('ws://') || this.serverUrl.startsWith('wss://')) {
+      // Convert WebSocket URL to HTTP for health check
+      healthCheckUrl = this.serverUrl.replace('ws://', 'http://').replace('wss://', 'https://').replace('/websocket/', '/health-check');
+    } else if (this.serverUrl.startsWith('http://') || this.serverUrl.startsWith('https://')) {
+      // Handle if we're already using HTTP/HTTPS
+      healthCheckUrl = this.serverUrl.replace('/websocket/', '/health-check');
+    } else {
+      // Unknown protocol, attempt to add http:// prefix
+      healthCheckUrl = 'http://' + this.serverUrl.replace('/websocket/', '/health-check');
+    }
     
     this.log(LogLevel.INFO, `Checking server availability at ${healthCheckUrl}`);
+    console.log(`Checking server availability at ${healthCheckUrl}`);
     
     return fetch(healthCheckUrl, { method: 'HEAD' })
       .then(response => {
         const isAvailable = response.ok;
         this.log(LogLevel.INFO, `Server availability check: ${isAvailable ? 'AVAILABLE' : 'UNAVAILABLE'}`);
+        console.log(`Server availability check result: ${isAvailable ? 'AVAILABLE' : 'UNAVAILABLE'}`);
         return isAvailable;
       })
       .catch(error => {
         this.log(LogLevel.ERROR, 'Server availability check failed:', error);
+        console.error('Server availability check failed:', error);
         return false;
       });
   }
