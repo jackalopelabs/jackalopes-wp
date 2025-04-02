@@ -14,42 +14,43 @@ if (!defined('WPINC')) {
  * Register all assets.
  */
 function jackalopes_wp_register_assets() {
-    // Register main game styles with direct PHP handler
+    // Register styles with WordPress's built-in asset handling
     wp_register_style(
-        'jackalopes-game-styles',
-        JACKALOPES_WP_PLUGIN_URL . 'game/dist/css-handler.php',
-        [],
-        JACKALOPES_WP_VERSION . '.' . time() // Add timestamp to prevent caching
+        'jackalopes-game',
+        plugins_url('game/dist/assets/index.css', dirname(__FILE__)),
+        array(),
+        JACKALOPES_WP_VERSION
+    );
+
+    // Register scripts
+    wp_register_script(
+        'jackalopes-game',
+        plugins_url('game/dist/assets/main.js', dirname(__FILE__)),
+        array('wp-element'),
+        JACKALOPES_WP_VERSION,
+        true
     );
     
-    // Add correct content type header for CSS
-    add_filter('style_loader_tag', function($tag, $handle) {
-        if ('jackalopes-game-styles' === $handle) {
-            return str_replace('<link ', '<link type="text/css" ', $tag);
-        }
-        return $tag;
-    }, 10, 2);
-    
-    // Register React and ReactDOM - use exact version that matches WordPress (18.3.1)
+    // Register React and ReactDOM
     wp_register_script(
         'react',
         'https://unpkg.com/react@18.3.1/umd/react.production.min.js',
-        [],
+        array(),
         '18.3.1',
-        false // Load in header
+        false
     );
     
     wp_register_script(
         'react-dom',
         'https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js',
-        ['react'],
+        array('react'),
         '18.3.1',
-        false // Load in header
+        false
     );
     
     // Add crossorigin attribute to React scripts
     add_filter('script_loader_tag', function($tag, $handle) {
-        if (in_array($handle, ['react', 'react-dom'])) {
+        if (in_array($handle, array('react', 'react-dom'))) {
             return str_replace('<script ', '<script crossorigin="anonymous" ', $tag);
         }
         return $tag;
@@ -64,25 +65,8 @@ function jackalopes_wp_register_assets() {
         false // Load in header
     );
     
-    // Register main game script
-    wp_register_script(
-        'jackalopes-game',
-        JACKALOPES_WP_PLUGIN_URL . 'game/dist/assets/main.js',
-        ['jackalopes-wp-helper', 'react', 'react-dom'], // Depend on helper script and React
-        JACKALOPES_WP_VERSION,
-        true
-    );
-    
-    // Add script attributes for module type
-    add_filter('script_loader_tag', function($tag, $handle) {
-        if ('jackalopes-game' === $handle) {
-            return str_replace('<script ', '<script type="text/javascript" crossorigin="anonymous" ', $tag);
-        }
-        return $tag;
-    }, 10, 2);
-    
     // Add inline CSS for game container
-    wp_add_inline_style('jackalopes-game-styles', '
+    wp_add_inline_style('jackalopes-game', '
         .jackalopes-game-container {
             position: relative;
             overflow: hidden;
@@ -173,32 +157,22 @@ function jackalopes_wp_register_assets() {
         ]
     );
 }
+add_action('init', 'jackalopes_wp_register_assets');
 
 /**
  * Enqueue game-specific assets.
  */
 function jackalopes_wp_enqueue_game_assets() {
-    // Use direct URL for CSS with PHP handler to force correct MIME type
-    wp_deregister_style('jackalopes-game-styles');
-    wp_register_style(
-        'jackalopes-game-styles',
-        add_query_arg('jackalopes_css', '1', JACKALOPES_WP_PLUGIN_URL . 'game/dist/assets/main.css'),
-        [],
-        JACKALOPES_WP_VERSION . '.' . time()
-    );
+    // Enqueue styles
+    wp_enqueue_style('jackalopes-game');
     
-    // Enqueue main game styles
-    wp_enqueue_style('jackalopes-game-styles');
-    
-    // Enqueue React and ReactDOM
+    // Enqueue scripts
     wp_enqueue_script('react');
     wp_enqueue_script('react-dom');
+    wp_enqueue_script('jackalopes-game');
     
     // Enqueue WordPress helper script
     wp_enqueue_script('jackalopes-wp-helper');
-    
-    // Enqueue main game script
-    wp_enqueue_script('jackalopes-game');
 }
 
 /**
@@ -354,7 +328,7 @@ add_action('init', 'jackalopes_wp_handle_css_files', 999);
 // Add a direct handler for CSS files via query parameter
 add_action('init', function() {
     if (isset($_GET['jackalopes_css'])) {
-        $css_path = JACKALOPES_WP_PLUGIN_DIR . 'game/dist/assets/main.css';
+        $css_path = JACKALOPES_WP_PLUGIN_DIR . 'game/dist/assets/index.css';
         if (file_exists($css_path)) {
             header('Content-Type: text/css');
             header('Cache-Control: max-age=3600');
@@ -362,4 +336,21 @@ add_action('init', function() {
             exit;
         }
     }
-}, 1); 
+}, 1);
+
+// Set correct MIME type for CSS files
+function jackalopes_wp_send_headers() {
+    if (strpos($_SERVER['REQUEST_URI'], 'jackalopes-wp/game/dist/assets/index.css') !== false) {
+        header('Content-Type: text/css');
+        header('Cache-Control: public, max-age=31536000');
+        exit();
+    }
+}
+add_action('send_headers', 'jackalopes_wp_send_headers');
+
+// Add MIME type support for CSS files
+function jackalopes_wp_mime_types($mime_types) {
+    $mime_types['css'] = 'text/css';
+    return $mime_types;
+}
+add_filter('mime_types', 'jackalopes_wp_mime_types'); 

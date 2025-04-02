@@ -32,15 +32,15 @@ export default defineConfig({
         console.log('Copying assets to dist directory...');
         
         // Define source and destination directories
-        const sourceDir = resolve(__dirname, 'src/assets');
+        const sourceDir = resolve(__dirname, 'src');
         const destDir = resolve(__dirname, 'dist/assets');
         
         // Create destination directory if it doesn't exist
         ensureDirectoryExists(destDir);
         
         try {
-          // Copy model files and directories
-          const assetFiles = glob.sync(`${sourceDir}/**/*.*`);
+          // Copy all asset files including CSS
+          const assetFiles = glob.sync(`${sourceDir}/**/*.{css,js,ts,tsx,json,glb,gltf,png,jpg,jpeg,gif,svg,mp3,ogg,wav}`);
           
           for (const file of assetFiles) {
             // Get the relative path from the sourceDir
@@ -101,7 +101,7 @@ export default defineConfig({
         }
         
         // Ensure CSS has the right MIME type
-        const cssBundle = bundle['assets/main.css'];
+        const cssBundle = bundle['assets/index.css'];
         if (cssBundle) {
           // Add a CSS MIME type comment
           cssBundle.source = `/* MIME Type: text/css */\n${cssBundle.source}`;
@@ -126,7 +126,12 @@ export default defineConfig({
       output: {
         entryFileNames: 'assets/[name].js',
         chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name].[ext]',
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name.endsWith('.css')) {
+            return 'assets/[name].[ext]';
+          }
+          return 'assets/[name].[ext]';
+        },
         format: 'iife',
         // Add proper globals for React
         globals: {

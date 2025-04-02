@@ -113,7 +113,6 @@ function jackalopes_wp_shortcode_callback($atts) {
                 background: #f8f9fa;
             }
         </style>
-        <link rel="stylesheet" type="text/css" href="<?php echo esc_url(JACKALOPES_WP_PLUGIN_URL . 'force-css.php?file=game/dist/assets/main.css&v=' . time()); ?>">
         <script>
         // Setup React safety checks to prevent multiple versions
         // Use the version WordPress is actually loading
