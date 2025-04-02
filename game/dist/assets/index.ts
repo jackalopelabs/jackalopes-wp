@@ -10,7 +10,7 @@
  */
 
 // Import WordPress-specific asset utilities
-import { getAssetPath, resolveModelPath, checkAssetExists as checkAsset } from '../utils/assetLoader';
+import { getAssetPath, resolveModelPath, checkAssetExists as checkAsset, findWorkingAssetPath } from '../utils/assetLoader';
 
 // Update fallback model definitions with proper path resolution
 export const FallbackModelBasePath = 'fallbacks';
@@ -18,7 +18,28 @@ export const FallbackMercPath = resolveModelPath(`${FallbackModelBasePath}/merc-
 export const FallbackJackalopePath = resolveModelPath(`${FallbackModelBasePath}/jackalope-fallback.glb`);
 
 // Add fallback model paths as a backup strategy - resolve for WordPress
-export const FpsArmsModelPath = getAssetPath('fps.glb'); // FPS arms model is still in public directory
+// Try multiple possible locations for fps.glb
+export const FPS_PATHS = [
+  'fps.glb',                     // Root of dist directory
+  'assets/fps.glb',              // Assets directory
+  'assets/models/fps.glb',       // Models directory
+  '../fps.glb',                  // One level up
+  '/app/plugins/jackalopes-wp/game/dist/fps.glb' // Absolute path within WordPress
+];
+
+// Initialize with a default path, but we'll update it when component mounts
+export let FpsArmsModelPath = getAssetPath('fps.glb');
+
+// Try to find the working path immediately if possible
+if (typeof window !== 'undefined') {
+  // Attempt to find a working path
+  findWorkingAssetPath(FPS_PATHS).then(path => {
+    FpsArmsModelPath = path;
+    console.log('[ASSET] Using FPS model path:', FpsArmsModelPath);
+  }).catch(err => {
+    console.warn('[ASSET] Error finding FPS model path:', err);
+  });
+}
 
 // Animations embedded in models
 export const AnimationNames = {

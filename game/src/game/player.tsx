@@ -13,8 +13,9 @@ import { ConnectionManager } from '../network/ConnectionManager'
 import { useMultiplayer } from '../network/MultiplayerManager'
 import { MercModel } from './MercModel' // Import our new MercModel component
 import { JackalopeModel } from './JackalopeModel' // Import the JackalopeModel
-import { FpsArmsModelPath } from '../assets' // Import FPS arms model path
+import { FpsArmsModelPath, FPS_PATHS } from '../assets' // Import FPS arms model path and paths array
 import { FootstepAudio } from '../components/FootstepAudio' // Import our new FootstepAudio component
+import { getAssetPath, findWorkingAssetPath } from '../utils/assetLoader' // Import asset utility functions
 
 const _direction = new THREE.Vector3()
 const _frontVector = new THREE.Vector3()
@@ -65,8 +66,44 @@ export type PlayerProps = RigidBodyProps & {
 
 export const Player = forwardRef<EntityType, PlayerProps>(({ onMove, walkSpeed = 0.1, runSpeed = 0.15, jumpForce = 0.5, connectionManager, visible = false, thirdPersonView = false, playerType = 'merc', ...props }, ref) => {
     const playerRef = useRef<EntityType>(null!)
-    const gltf = useGLTF(FpsArmsModelPath)
-    const { actions } = useAnimations(gltf.animations, gltf.scene)
+    
+    // Use a ref to track errors and provide fallbacks
+    const fpsModelLoadAttempts = useRef(0);
+    const maxAttempts = 3;
+    
+    // Use a simpler approach to load the model with error handling
+    const gltfResult = useGLTF(FpsArmsModelPath);
+    const [modelError, setModelError] = useState<Error | null>(null);
+    
+    // Set up error handling for the model
+    useEffect(() => {
+      const loadModel = async () => {
+        try {
+          // If the model failed to load initially, try alternative paths
+          if (!gltfResult?.scene && fpsModelLoadAttempts.current < maxAttempts) {
+            fpsModelLoadAttempts.current++;
+            
+            // Try the next path in the array
+            if (FPS_PATHS && FPS_PATHS.length > fpsModelLoadAttempts.current) {
+              const nextPath = getAssetPath(FPS_PATHS[fpsModelLoadAttempts.current]);
+              console.log(`[FPS MODEL] Attempt ${fpsModelLoadAttempts.current}/${maxAttempts} with path: ${nextPath}`);
+              
+              // We can't change the model path mid-render, but we can flag it as an error
+              // so the next render cycle will try a different path
+              setModelError(new Error(`Failed to load model, trying next path: ${nextPath}`));
+            }
+          }
+        } catch (err) {
+          console.error('[FPS MODEL] Error loading model:', err);
+          setModelError(err instanceof Error ? err : new Error(String(err)));
+        }
+      };
+      
+      loadModel();
+    }, [gltfResult?.scene]);
+    
+    // Get animations if model loaded successfully
+    const { actions } = useAnimations(gltfResult?.animations || [], gltfResult?.scene);
     
     // Add a flag to track when arms model is ready to use
     const armsModelReady = useRef(false);
@@ -78,9 +115,9 @@ export const Player = forwardRef<EntityType, PlayerProps>(({ onMove, walkSpeed =
     
     // Debug log for FPS arms model loading
     useEffect(() => {
-        if (gltf?.scene) {
-            console.log('FPS arms model loaded successfully:', gltf.scene);
-            console.log('FPS arms animations:', Object.keys(actions));
+        if (gltfResult?.scene) {
+            console.log('FPS arms model loaded successfully:', gltfResult.scene);
+            console.log('FPS arms animations:', Object.keys(actions || {}));
             armsModelReady.current = true;
             
             // Immediately position the arms when model loads successfully
@@ -96,11 +133,11 @@ export const Player = forwardRef<EntityType, PlayerProps>(({ onMove, walkSpeed =
                     window.dispatchEvent(new CustomEvent('forceArmsReset'));
                 }, 200);
             }
-        } else {
-            console.error('Failed to load FPS arms model');
+        } else if (modelError) {
+            console.error('Failed to load FPS arms model:', modelError);
             armsModelReady.current = false;
         }
-    }, [gltf.scene, actions]);
+    }, [gltfResult?.scene, actions, modelError, playerType, thirdPersonView]);
     
     // For client-side prediction
     const lastStateTime = useRef(0)
@@ -1113,7 +1150,7 @@ export const Player = forwardRef<EntityType, PlayerProps>(({ onMove, walkSpeed =
                             </mesh>
                             
                             <primitive 
-                                object={gltf.scene} 
+                                object={gltfResult.scene} 
                                 position={[0, 0, 0]}
                                 rotation={[0, Math.PI, 0]} // Fixed rotation that solves the upside-down issue
                                 scale={scaleArms}
@@ -1262,5 +1299,17 @@ export const PlayerControls = ({ children, thirdPersonView = false }: PlayerCont
     )
 }
 
-// Preload the model to ensure it's cached
-useGLTF.preload(FpsArmsModelPath)
+// Update preload to use findWorkingAssetPath instead of a single path
+useEffect(() => {
+  // Try to preload the fps model
+  findWorkingAssetPath(FPS_PATHS)
+    .then(path => {
+      console.log('[PRELOAD] Preloading FPS model from path:', path);
+      useGLTF.preload(path);
+    })
+    .catch(err => {
+      console.warn('[PRELOAD] Error preloading FPS model:', err);
+      // Fallback to the default path as a last resort
+      useGLTF.preload(FpsArmsModelPath);
+    });
+}, []);

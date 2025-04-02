@@ -4,13 +4,13 @@
 # This script copies real asset files from src to dist
 
 # Set variables
-SRC_DIR="jackalopes-wp/game/src"
-DIST_DIR="jackalopes-wp/game/dist"
+SRC_DIR="game/src"
+DIST_DIR="game/dist"
 SRC_ASSETS_DIR="$SRC_DIR/assets"
 DIST_ASSETS_DIR="$DIST_DIR/assets"
 ORIGINAL_GAME_DIR="./public"  # Path to original game's public directory
 ORIGINAL_SRC_DIR="./src"      # Path to original game's src directory
-WP_ROOT="./jackalopes-wp"     # WordPress plugin root
+WP_ROOT="."     # WordPress plugin root
 
 # Colors for output
 GREEN='\033[0;32m'

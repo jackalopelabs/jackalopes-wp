@@ -29,6 +29,23 @@ export const fixProtocol = (url: string): string => {
 };
 
 /**
+ * Detect if we're in a development environment
+ * This handles both Vite development mode and WordPress development mode
+ */
+export const isDevEnvironment = (): boolean => {
+  // Check for Vite dev server
+  const isViteDev = window.location.port === '3000' || 
+                    window.location.port === '5173' || 
+                    window.location.hostname === 'localhost' ||
+                    window.location.hostname === '[::1]';
+                    
+  // Check for WordPress development mode
+  const isWpDev = window.jackalopesGameSettings?.debug === true;
+  
+  return isViteDev || isWpDev;
+};
+
+/**
  * Normalize a path to ensure proper formatting
  * 
  * @param path - Path to normalize
@@ -73,6 +90,18 @@ export const normalizePath = (path: string): string => {
 };
 
 /**
+ * Check if the current URL is localhost or IP-based 
+ * This helps detect dev environments that would trigger CORS issues
+ */
+export const isLocalOrIpBasedHost = (): boolean => {
+  const hostname = window.location.hostname;
+  return hostname === 'localhost' || 
+         hostname === '[::1]' || 
+         /^127\.\d+\.\d+\.\d+$/.test(hostname) ||
+         /^\d+\.\d+\.\d+\.\d+$/.test(hostname);
+};
+
+/**
  * Get the correct asset path based on environment
  * 
  * @param path - The asset path relative to assets directory
@@ -83,6 +112,18 @@ export const getAssetPath = (path: string): string => {
   if (!path) {
     console.error('[ASSET] Null or undefined path provided');
     return './assets/fallback.png'; // Return a fallback path
+  }
+  
+  // Special case for fps.glb which might be in the dist root instead of assets directory
+  if (path === 'fps.glb' || path === 'assets/fps.glb') {
+    // In WordPress mode, look in plugin root first, then in assets
+    if (window.jackalopesGameSettings?.pluginUrl) {
+      const pluginUrl = window.jackalopesGameSettings.pluginUrl;
+      // Remove the trailing slash if present to avoid double slashes
+      const normalizedPluginUrl = pluginUrl.endsWith('/') ? pluginUrl.slice(0, -1) : pluginUrl;
+      // Use protocol-relative URL to avoid mixed content
+      return fixProtocol(`${normalizedPluginUrl}/game/dist/fps.glb`);
+    }
   }
   
   // Normalize the path
@@ -96,15 +137,25 @@ export const getAssetPath = (path: string): string => {
   if (window.jackalopesGameSettings?.assetsUrl) {
     // Handle WordPress mode
     const wpUrl = window.jackalopesGameSettings.assetsUrl;
+    // Remove trailing slash if present to avoid double slashes
+    const normalizedWpUrl = wpUrl.endsWith('/') ? wpUrl.slice(0, -1) : wpUrl;
     
     // Fix double "assets" in the path
     let finalPath = cleanPath;
-    if (finalPath.startsWith('assets/') && wpUrl.includes('/assets/')) {
+    if (finalPath.startsWith('assets/') && normalizedWpUrl.includes('/assets/')) {
       finalPath = finalPath.substring(7); // Remove the leading "assets/"
     }
 
+    // Don't use localhost or IP-based URLs in production (avoid CORS issues)
+    let fullPath = `${normalizedWpUrl}/${finalPath}`;
+    if (isLocalOrIpBasedHost() && !isDevEnvironment()) {
+      // If we're trying to load from localhost in production, use a protocol-relative URL instead
+      const currentDomain = window.location.hostname;
+      fullPath = `//${currentDomain}/app/plugins/jackalopes-wp/game/dist/assets/${finalPath}`;
+    }
+
     // Ensure URL uses correct protocol to prevent mixed content issues
-    const fullPath = fixProtocol(`${wpUrl}${finalPath}`);
+    fullPath = fixProtocol(fullPath);
     console.log(`[ASSET] WordPress path resolved: ${fullPath}`);
     return fullPath;
   }
@@ -127,6 +178,11 @@ export const getAssetPath = (path: string): string => {
  * @returns Properly resolved path for current environment
  */
 export const resolveModelPath = (modelPath: string): string => {
+  // Special case for fps.glb
+  if (modelPath === 'fps.glb' || modelPath.endsWith('/fps.glb')) {
+    return getAssetPath('fps.glb');
+  }
+  
   // Handle special case for environment models
   if (modelPath.includes('lowpoly_nature') || modelPath.includes('environment')) {
     return getAssetPath(`environment/lowpoly_nature/${modelPath.split('/').pop()}`);
@@ -164,6 +220,28 @@ export const checkAssetExists = (path: string): Promise<boolean> => {
     };
     xhr.send();
   });
+};
+
+/**
+ * Try multiple possible locations for an asset until one works
+ * 
+ * @param paths - Array of paths to try
+ * @returns Promise with the first working path or the first path if none work
+ */
+export const findWorkingAssetPath = async (paths: string[]): Promise<string> => {
+  if (!paths || paths.length === 0) return '';
+  
+  for (const path of paths) {
+    try {
+      const exists = await checkAssetExists(path);
+      if (exists) return getAssetPath(path);
+    } catch (err) {
+      console.warn(`Error checking path ${path}:`, err);
+    }
+  }
+  
+  // If no path works, return the first one as fallback
+  return getAssetPath(paths[0]);
 };
 
 /**
@@ -237,5 +315,8 @@ export default {
   testAssetLoading,
   AssetType,
   fixProtocol,
-  normalizePath
+  normalizePath,
+  findWorkingAssetPath,
+  isDevEnvironment,
+  isLocalOrIpBasedHost
 }; 
