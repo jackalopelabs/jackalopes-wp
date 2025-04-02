@@ -75,6 +75,9 @@ function jackalopes_wp_init() {
     
     // Fix CSS MIME type issues
     add_action('init', 'jackalopes_wp_fix_css_mime_type');
+    
+    // Create .htaccess file for assets directory to fix MIME types
+    jackalopes_wp_create_assets_htaccess();
 }
 
 /**
@@ -95,6 +98,43 @@ function jackalopes_wp_fix_css_mime_type() {
         $mimes['css'] = 'text/css';
         return $mimes;
     });
+}
+
+/**
+ * Creates an .htaccess file in the game/dist/assets directory to force correct MIME types
+ */
+function jackalopes_wp_create_assets_htaccess() {
+    $htaccess_path = JACKALOPES_WP_PLUGIN_DIR . 'game/dist/assets/.htaccess';
+    
+    // Only create if it doesn't exist
+    if (!file_exists($htaccess_path)) {
+        $htaccess_content = <<<EOT
+# Force correct MIME types
+<IfModule mod_mime.c>
+    AddType text/css .css
+    AddType application/javascript .js
+    AddType model/gltf+json .gltf
+    AddType model/gltf-binary .glb
+</IfModule>
+
+# Force header content type
+<IfModule mod_headers.c>
+    <FilesMatch "\.css$">
+        Header set Content-Type "text/css"
+    </FilesMatch>
+    <FilesMatch "\.js$">
+        Header set Content-Type "application/javascript"
+    </FilesMatch>
+</IfModule>
+
+# Force type for CSS files
+<FilesMatch "\.css$">
+    ForceType text/css
+</FilesMatch>
+EOT;
+        
+        file_put_contents($htaccess_path, $htaccess_content);
+    }
 }
 
 // Initialize the plugin

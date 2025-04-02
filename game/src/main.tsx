@@ -267,21 +267,24 @@ function initJackalopesGame(containerId: string, options: JackalopesGameOptions 
   
   // Initialize the React app
   try {
+    // We need a function component wrapper to safely use hooks
+    const GameWrapper = (props: any) => {
+      // Hooks can safely be used inside the functional component
+      // No direct calls to useEffect outside components
+      return <App {...props} />;
+    };
+    
     const root = ReactDOMClient.createRoot(container);
     const gameSettings = window.jackalopesGameSettings || {};
     
     root.render(
       <React.StrictMode>
-        <App 
-          // Cast to any to bypass TypeScript prop validation
-          // We know these props exist in the component
-          {...{
-            serverUrl: gameSettings.serverUrl,
-            isFullscreen: gameSettings.isFullscreen,
-            isWordPress: true,
-            assetsUrl: gameSettings.assetsUrl,
-            serverModeEnabled: gameSettings.serverModeEnabled
-          } as any}
+        <GameWrapper 
+          serverUrl={gameSettings.serverUrl}
+          isFullscreen={gameSettings.isFullscreen}
+          isWordPress={true}
+          assetsUrl={gameSettings.assetsUrl}
+          serverModeEnabled={gameSettings.serverModeEnabled}
         />
       </React.StrictMode>
     );

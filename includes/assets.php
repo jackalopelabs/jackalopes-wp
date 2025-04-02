@@ -14,10 +14,10 @@ if (!defined('WPINC')) {
  * Register all assets.
  */
 function jackalopes_wp_register_assets() {
-    // Register main game styles
+    // Register main game styles with direct PHP handler
     wp_register_style(
         'jackalopes-game-styles',
-        JACKALOPES_WP_PLUGIN_URL . 'game/dist/assets/main.css',
+        JACKALOPES_WP_PLUGIN_URL . 'game/dist/css-handler.php',
         [],
         JACKALOPES_WP_VERSION . '.' . time() // Add timestamp to prevent caching
     );
@@ -178,6 +178,15 @@ function jackalopes_wp_register_assets() {
  * Enqueue game-specific assets.
  */
 function jackalopes_wp_enqueue_game_assets() {
+    // Use direct URL for CSS with PHP handler to force correct MIME type
+    wp_deregister_style('jackalopes-game-styles');
+    wp_register_style(
+        'jackalopes-game-styles',
+        add_query_arg('jackalopes_css', '1', JACKALOPES_WP_PLUGIN_URL . 'game/dist/assets/main.css'),
+        [],
+        JACKALOPES_WP_VERSION . '.' . time()
+    );
+    
     // Enqueue main game styles
     wp_enqueue_style('jackalopes-game-styles');
     
@@ -340,4 +349,17 @@ function jackalopes_wp_handle_css_files() {
         }
     }
 }
-add_action('init', 'jackalopes_wp_handle_css_files', 999); 
+add_action('init', 'jackalopes_wp_handle_css_files', 999);
+
+// Add a direct handler for CSS files via query parameter
+add_action('init', function() {
+    if (isset($_GET['jackalopes_css'])) {
+        $css_path = JACKALOPES_WP_PLUGIN_DIR . 'game/dist/assets/main.css';
+        if (file_exists($css_path)) {
+            header('Content-Type: text/css');
+            header('Cache-Control: max-age=3600');
+            readfile($css_path);
+            exit;
+        }
+    }
+}, 1); 

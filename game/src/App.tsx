@@ -4576,51 +4576,62 @@ if (typeof document !== 'undefined') {
   ReactDOM.createRoot(removeElementsDiv).render(<RemoveUnwantedElements />);
 }
 
-// Add event listener for server connection errors
-React.useEffect(() => {
-  const handleServerUnreachable = (event: CustomEvent) => {
-    console.log('App received server_unreachable event, showing notification');
-    setNotification({
-      type: 'error',
-      message: 'Game server is unreachable. Running in local mode.',
-      duration: 5000
-    });
-  };
+// Define an error handler component with proper access to required variables
+const ErrorHandlers = ({ 
+  setNotification,
+  assetErrorShown 
+}: { 
+  setNotification: (notification: any) => void, 
+  assetErrorShown: React.MutableRefObject<boolean>
+}) => {
+  // Add event listener for server connection errors
+  useEffect(() => {
+    const handleServerUnreachable = (event: CustomEvent) => {
+      console.log('App received server_unreachable event, showing notification');
+      setNotification({
+        type: 'error',
+        message: 'Game server is unreachable. Running in local mode.',
+        duration: 5000
+      });
+    };
 
-  // Listen for server connection errors
-  window.addEventListener('server_unreachable', handleServerUnreachable as EventListener);
+    // Listen for server connection errors
+    window.addEventListener('server_unreachable', handleServerUnreachable as EventListener);
 
-  return () => {
-    window.removeEventListener('server_unreachable', handleServerUnreachable as EventListener);
-  };
-}, []);
+    return () => {
+      window.removeEventListener('server_unreachable', handleServerUnreachable as EventListener);
+    };
+  }, [setNotification]);
 
-// Add error handling for asset loading errors
-React.useEffect(() => {
-  const handleAssetError = (event: ErrorEvent) => {
-    // Check if this is an asset loading error
-    if (event.message && (
-      event.message.includes('Could not load') || 
-      event.message.includes('404') || 
-      event.message.includes('Not Found')
-    )) {
-      console.log('Asset loading error detected:', event.message);
-      // Only show one notification for asset errors to avoid spamming
-      if (!assetErrorShown.current) {
-        assetErrorShown.current = true;
-        setNotification({
-          type: 'warning',
-          message: 'Some game assets failed to load. Visual elements may be missing.',
-          duration: 5000
-        });
+  // Add error handling for asset loading errors
+  useEffect(() => {
+    const handleAssetError = (event: ErrorEvent) => {
+      // Check if this is an asset loading error
+      if (event.message && (
+        event.message.includes('Could not load') || 
+        event.message.includes('404') || 
+        event.message.includes('Not Found')
+      )) {
+        console.log('Asset loading error detected:', event.message);
+        // Only show one notification for asset errors to avoid spamming
+        if (!assetErrorShown.current) {
+          assetErrorShown.current = true;
+          setNotification({
+            type: 'warning',
+            message: 'Some game assets failed to load. Visual elements may be missing.',
+            duration: 5000
+          });
+        }
       }
-    }
-  };
+    };
 
-  // We need to use the capture phase to catch errors before they're handled
-  window.addEventListener('error', handleAssetError, true);
+    // We need to use the capture phase to catch errors before they're handled
+    window.addEventListener('error', handleAssetError, true);
 
-  return () => {
-    window.removeEventListener('error', handleAssetError, true);
-  };
-}, []);
+    return () => {
+      window.removeEventListener('error', handleAssetError, true);
+    };
+  }, [setNotification, assetErrorShown]);
+  
+  return null;
+};
