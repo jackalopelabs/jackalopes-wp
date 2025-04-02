@@ -51,12 +51,13 @@ function jackalopes_wp_shortcode_callback($atts) {
     <div class="jackalopes-game-container <?php echo esc_attr($attributes['class']); ?>" style="<?php echo $custom_css; ?>">
         <script>
         // Setup React safety checks to prevent multiple versions
-        window._REACT_VERSION = '18.2.0';
+        // Use the version WordPress is actually loading
+        window._REACT_VERSION = '18.3.1';
         
         // Remove any existing React if it's the wrong version
         if (typeof React !== 'undefined') {
             if (React.version !== window._REACT_VERSION) {
-                console.warn('Detected mismatched React version:', React.version, 'vs needed:', window._REACT_VERSION);
+                console.warn('Detected React version:', React.version, 'vs expected:', window._REACT_VERSION);
                 // Don't remove, just note the issue
             }
         }
@@ -85,9 +86,9 @@ function jackalopes_wp_shortcode_callback($atts) {
             // Check if React is already loaded
             if (typeof React === 'undefined') {
                 console.log('React not loaded, loading from CDN...');
-                loadScript('https://unpkg.com/react@18.2.0/umd/react.production.min.js', 'react-fallback', function() {
+                loadScript('https://unpkg.com/react@18.3.1/umd/react.production.min.js', 'react-fallback', function() {
                     // After React loads, load ReactDOM
-                    loadScript('https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js', 'react-dom-fallback', function() {
+                    loadScript('https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js', 'react-dom-fallback', function() {
                         // Define global window.React and window.ReactDOM explicitly
                         window.React = React;
                         window.ReactDOM = ReactDOM;
@@ -103,6 +104,9 @@ function jackalopes_wp_shortcode_callback($atts) {
                 });
             } else {
                 console.log('React already loaded, version:', React.version);
+                // Ensure it's on the window object
+                window.React = React;
+                window.ReactDOM = ReactDOM;
             }
         })();
         

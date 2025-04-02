@@ -30,20 +30,20 @@ function jackalopes_wp_register_assets() {
         return $tag;
     }, 10, 2);
     
-    // Register React and ReactDOM - use exact version that matches the bundle
+    // Register React and ReactDOM - use exact version that matches WordPress (18.3.1)
     wp_register_script(
         'react',
-        'https://unpkg.com/react@18.2.0/umd/react.production.min.js',
+        'https://unpkg.com/react@18.3.1/umd/react.production.min.js',
         [],
-        '18.2.0',
+        '18.3.1',
         false // Load in header
     );
     
     wp_register_script(
         'react-dom',
-        'https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js',
+        'https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js',
         ['react'],
-        '18.2.0',
+        '18.3.1',
         false // Load in header
     );
     

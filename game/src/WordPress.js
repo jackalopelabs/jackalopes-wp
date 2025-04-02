@@ -2,8 +2,8 @@
  * WordPress.js - Helper script for initializing the Jackalopes game in WordPress
  */
 
-// Define React version for consistency
-const REACT_VERSION = '18.2.0';
+// Define React version for consistency with WordPress
+const REACT_VERSION = '18.3.1';
 
 // Initialize once the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -28,20 +28,24 @@ document.addEventListener('DOMContentLoaded', function() {
     window.ReactDOM = ReactDOM;
   }
   
-  // Load React if not available
-  if (!checkReactAvailability()) {
-    console.log('React not detected, loading React libraries...');
-    loadReactLibraries().then(() => {
-      console.log('React libraries loaded successfully');
+  // Add a small delay to ensure React is fully initialized
+  setTimeout(function() {
+    // Load React if not available
+    if (!checkReactAvailability()) {
+      console.log('React not detected, loading React libraries...');
+      loadReactLibraries().then(() => {
+        console.log('React libraries loaded successfully');
+        // Add another small delay after loading
+        setTimeout(initializeGame, 100);
+      }).catch(error => {
+        console.error('Failed to load React:', error);
+        showError('Failed to load React libraries. Please refresh the page.');
+      });
+    } else {
+      console.log('React is already available');
       initializeGame();
-    }).catch(error => {
-      console.error('Failed to load React:', error);
-      showError('Failed to load React libraries. Please refresh the page.');
-    });
-  } else {
-    console.log('React is already available');
-    initializeGame();
-  }
+    }
+  }, 100);
   
   // Add retry button functionality
   document.querySelectorAll('.error-retry').forEach(button => {

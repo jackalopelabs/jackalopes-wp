@@ -164,8 +164,8 @@ export default defineConfig({
     'process.env.VITE_APP_TITLE': JSON.stringify('Jackalopes'),
     'process.env.VITE_DEBUG': JSON.stringify(process.env.VITE_DEBUG || 'false'),
     // Explicitly define React versions to avoid conflicts
-    '__REACT_VERSION__': JSON.stringify('18.2.0'),
-    '__REACT_DOM_VERSION__': JSON.stringify('18.2.0')
+    '__REACT_VERSION__': JSON.stringify('18.3.1'),
+    '__REACT_DOM_VERSION__': JSON.stringify('18.3.1')
   },
   resolve: {
     alias: {

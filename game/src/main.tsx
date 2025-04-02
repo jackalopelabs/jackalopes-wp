@@ -17,6 +17,10 @@ import { JackalopesGameSettings, JackalopesGameOptions } from './types/wordpress
  * The game will be initialized when the WordPress shortcode is loaded.
  */
 
+// Use this line to avoid direct calls to React.useEffect which can cause hook errors
+// The useEffect, useState, etc. functions should only be called from inside React components
+const { useState, useEffect, useContext, useRef } = React;
+
 // Extend the ReactDOM interface to include createRoot from react-dom/client
 declare global {
   interface Window {
@@ -24,6 +28,8 @@ declare global {
     ReactDOM: typeof ReactDOM & {
       createRoot?: typeof ReactDOMClient.createRoot;
     };
+    jackalopesGameSettings?: JackalopesGameSettings;
+    initJackalopesGame: (containerId: string, options?: JackalopesGameOptions) => void;
   }
 }
 
@@ -38,6 +44,24 @@ if (typeof window !== 'undefined') {
     window.ReactDOM.createRoot = ReactDOMClient.createRoot;
   }
 }
+
+// If a global React hook function is called outside a component (like in this file)
+// We need to make sure it doesn't cause an error
+// This creates a safe wrapper function
+const safeHookCall = (hookFn: Function) => {
+  return (...args: any[]) => {
+    try {
+      return hookFn(...args);
+    } catch (e) {
+      console.warn('Hook call failed, but safely caught:', e);
+      // Return a dummy cleanup function
+      return () => {};
+    }
+  };
+};
+
+// Create safe hook functions
+const safeUseEffect = safeHookCall(useEffect);
 
 // Initialize WordPress integration
 setupWPGameIntegration();
@@ -158,14 +182,6 @@ function setupFullscreenHandling(container: HTMLElement) {
       container.classList.remove('fullscreen-active');
     }
   });
-}
-
-// Extend the window interface for global initialization
-declare global {
-  interface Window {
-    initJackalopesGame: (containerId: string, options?: JackalopesGameOptions) => void;
-    jackalopesGameSettings?: JackalopesGameSettings;
-  }
 }
 
 // Store the observer for cleanup
