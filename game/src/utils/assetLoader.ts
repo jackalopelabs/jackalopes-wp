@@ -14,8 +14,11 @@ export const getAssetPath = (path: string): string => {
   // Remove leading slash if present
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
   
-  // Debug logs to help troubleshoot path resolution
-  console.log(`[ASSET] Original path: ${path}`);
+  // Production builds should not log asset paths to avoid console spam
+  const isDev = process.env.NODE_ENV !== 'production';
+  if (isDev) {
+    console.log(`[ASSET] Original path: ${path}`);
+  }
   
   // If running in WordPress, use the assets URL from WordPress settings
   if (window.jackalopesGameSettings?.assetsUrl) {
@@ -28,9 +31,37 @@ export const getAssetPath = (path: string): string => {
       finalPath = finalPath.substring(7); // Remove the leading "assets/"
     }
 
-    const fullPath = `${wpUrl}${finalPath}`;
-    console.log(`[ASSET] WordPress path resolved: ${fullPath}`);
+    // Ensure proper URL protocol to avoid mixed content errors
+    let fullPath = `${wpUrl}${finalPath}`;
+    
+    // If we're on HTTPS but the URL is HTTP, try to upgrade to HTTPS
+    if (window.location.protocol === 'https:' && fullPath.startsWith('http:')) {
+      // Only change the protocol if it's not pointing to localhost or IP addresses
+      const url = new URL(fullPath);
+      const isLocalhost = url.hostname === 'localhost' || url.hostname === '[::1]';
+      const isIpAddress = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(url.hostname);
+      
+      if (!isLocalhost && !isIpAddress) {
+        fullPath = fullPath.replace('http:', 'https:');
+      }
+    }
+    
+    if (isDev) {
+      console.log(`[ASSET] WordPress path resolved: ${fullPath}`);
+    }
     return fullPath;
+  }
+  
+  // Check if we're running in a production build vs development
+  const isProd = process.env.NODE_ENV === 'production';
+  
+  // In production, always use relative paths to avoid issues with different domains
+  if (isProd) {
+    // Make sure we're using relative paths in production
+    if (cleanPath.startsWith('assets/')) {
+      return `./${cleanPath}`;
+    }
+    return `./assets/${cleanPath}`;
   }
   
   // In development mode, use the relative path
@@ -40,7 +71,9 @@ export const getAssetPath = (path: string): string => {
   }
   
   const devPath = `./assets/${cleanPath}`;
-  console.log(`[ASSET] Development path resolved: ${devPath}`);
+  if (isDev) {
+    console.log(`[ASSET] Development path resolved: ${devPath}`);
+  }
   return devPath;
 };
 

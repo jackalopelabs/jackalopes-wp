@@ -101,6 +101,26 @@ If you're having issues with the multiplayer functionality:
 2. Verify the WebSocket server is running.
 3. Check for any firewall or proxy configuration that might block WebSocket connections.
 
+### CORS & Loading Issues
+
+If you encounter issues with the game loading, black screens, CORS errors, or mixed content warnings:
+
+1. Build the game using the production build script which handles these issues automatically:
+   ```bash
+   ./build-prod.sh
+   ```
+
+2. Check your browser console for specific errors:
+   - **Mixed Content Warnings:** This happens when loading HTTP content on an HTTPS site
+   - **CORS Errors:** Appears when trying to load resources from different origins
+   - **Loading Screen Hanging:** The loading screen might get stuck
+
+3. Common solutions:
+   - Use relative paths for all resources rather than absolute URLs
+   - Ensure all scripts and assets are loaded from the same domain
+   - Use the production build script which fixes most common issues
+   - Make sure your server is configured to send proper CORS headers
+
 ## Development
 
 ### Local Testing
@@ -123,142 +143,66 @@ cd game
 npm run dev
 ```
 
-## Integration with Trellis/Sage/Bedrock
-
-For integration with a Roots stack (Trellis/Sage/Bedrock):
-
-1. Add the plugin to your Bedrock composer.json:
-   ```json
-   "repositories": [
-     {
-       "type": "vcs",
-       "url": "https://github.com/yourusername/jackalopes"
-     }
-   ],
-   "require": {
-     "yourusername/jackalopes-wp": "dev-main"
-   }
-   ```
-
-2. Deploy using Trellis:
-   ```bash
-   trellis deploy production
-   ```
-
-## License
-
-GPL-2.0-or-later
-
-## Current Implementation Status
-
-- ✅ WordPress Plugin Framework (Complete)
-- ✅ Game Shortcode System (Complete)
-- ✅ Asset Loading System (Complete)
-- ✅ WebSocket Integration (Complete)
-- ✅ Basic ThreeJS Game Implementation (Complete)
-- ⚠️ Full Game Implementation (In Progress)
-- ⚠️ Asset Transfer (Pending)
-
-## Description
-
-Jackalopes is a 3D first-person shooter game built with React Three Fiber, Rapier physics, and TypeScript. This WordPress plugin allows you to easily embed the game in any WordPress post or page using a simple shortcode.
-
-## Features
-
-- Embed the Jackalopes game in any post or page using `[jackalopes]` shortcode
-- Multiplayer functionality when used with the [Jackalopes Server](https://github.com/yourusername/jackalopes-server) plugin
-- Admin interface for configuring game settings
-- Responsive design that works on different screen sizes
-- Compatible with Roots/Sage/Trellis/Lima/Tailwind/Acorn LEMP stacks
-
-## Requirements
-
-- WordPress 6.0 or higher
-- PHP 8.1 or higher
-- Modern browser with WebGL support
-
-## Installation
-
-### Via Composer (Recommended)
-
-1. Add the repository to your `composer.json` file:
-
-```json
-"repositories": [
-    {
-        "type": "vcs",
-        "url": "https://github.com/yourusername/jackalopes-wp"
-    }
-]
-```
-
-2. Require the package:
-
-```bash
-composer require jackalopelabs/jackalopes-wp
-```
-
-3. Activate the plugin in WordPress admin.
-
-### Manual Installation
-
-1. Download the plugin zip file.
-2. Upload to your WordPress plugins directory.
-3. Activate the plugin in WordPress admin.
-
-## Usage
-
-Use the shortcode `[jackalopes]` to embed the game in any post or page:
-
-```
-[jackalopes]
-```
-
-### Shortcode Attributes
-
-You can customize the game display with these attributes:
-
-```
-[jackalopes width="800px" height="500px" fullscreen="true"]
-```
-
-- `width`: Set the width of the game container (default: 100%)
-- `height`: Set the height of the game container (default: 600px)
-- `fullscreen`: Enable fullscreen mode (default: false)
-- `server`: Specify a custom WebSocket server URL (optional)
-
-## Testing and Development
-
-### Local Testing Without WordPress
-
-For quick testing without a WordPress environment:
-
-1. Build the game:
-   ```bash
-   cd game
-   npm install
-   npm run build
-   ```
-
-2. Start the test server:
-   ```bash
-   php -S localhost:8000 serve.php
-   ```
-
-3. Open your browser and navigate to `http://localhost:8000`
-
-### Game Development
-
-1. Make changes to the game source in `game/src/`
-2. For development mode with hot reloading:
-   ```bash
-   cd game
-   npm run dev
-   ```
 3. For WordPress testing, build the game:
    ```bash
    npm run build
    ```
+
+### Build Scripts
+
+Several build scripts are available to help with development and deployment:
+
+#### Production Build Script (`build-prod.sh`)
+
+This script builds the game in production mode with optimizations to prevent common issues like CORS errors and mixed content warnings:
+
+```bash
+./build-prod.sh
+```
+
+Key features:
+- Sets NODE_ENV to production
+- Skips TypeScript type checking to allow builds even with TypeScript errors
+- Cleans up any development-only resources that might cause issues on production sites
+- Fixes references to localhost resources that would cause CORS errors
+- Creates a highly optimized production build in the `game/dist` directory
+
+**Problem solving:**
+- **Mixed Content Warnings:** Fixes HTTP vs HTTPS content issues by ensuring all resource paths use relative references
+- **CORS Errors:** Removes any hardcoded references to localhost or development servers that would be blocked by CORS
+- **Loading Issues:** Ensures the game loads immediately without showing loading screens that might hang
+- **Build Errors:** Bypasses TypeScript errors to produce working builds even when type definitions aren't perfect
+
+#### Standard Build Script (`build.sh`)
+
+This script provides standard build functionality:
+
+```bash
+# Simple build
+./build.sh
+
+# Build and deploy to WordPress plugins directory
+./build.sh /path/to/wordpress/wp-content/plugins/jackalopes-wp
+```
+
+#### Asset Management Script (`copy-assets.sh`)
+
+This script handles copying and organizing assets for the game:
+
+```bash
+./copy-assets.sh
+```
+
+It automatically runs after builds to:
+- Copy 3D models, textures, and other assets from source to distribution
+- Ensure assets are properly referenced and available in the built game
+
+#### When to Use Each Script
+
+- Use `npm run dev` during active development for hot reloading
+- Use `build-prod.sh` when preparing for production deployment
+- Use `build.sh` for routine builds or when you want to immediately deploy to a WordPress directory
+- Use `copy-assets.sh` manually when troubleshooting missing assets
 
 ### Game Controls
 

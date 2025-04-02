@@ -8,6 +8,58 @@ import uiContainer from './utils/ui-container';
 // Import types from shared file
 import { JackalopesGameSettings, JackalopesGameOptions } from './types/wordpress';
 
+// Add error handlers for resource loading to prevent CORS errors from breaking the app
+// This helps with issues on production sites trying to load local development resources
+(function setupErrorHandlers() {
+  // Store original methods to restore them if needed
+  const originalCreateElement = document.createElement.bind(document);
+  
+  // Intercept script tag creation to add error handling
+  document.createElement = function(tagName: string, options?: ElementCreationOptions): HTMLElement {
+    const element = originalCreateElement(tagName, options);
+    
+    if (tagName.toLowerCase() === 'script') {
+      const scriptElement = element as HTMLScriptElement;
+      
+      // Add error handling to script tags
+      const originalSetAttribute = scriptElement.setAttribute.bind(scriptElement);
+      scriptElement.setAttribute = function(name: string, value: string): void {
+        // Skip loading Vite HMR scripts which will fail in production
+        if (name === 'src' && (
+            value.includes('@vite/client') || 
+            value.includes('localhost:') || 
+            value.includes('[::]')
+        )) {
+          console.warn(`Skipping loading of local development resource: ${value}`);
+          return;
+        }
+        
+        originalSetAttribute(name, value);
+      };
+    }
+    
+    return element;
+  };
+  
+  // Add global error handler for script loading errors
+  window.addEventListener('error', function(event) {
+    // Check if it's a script loading error
+    if (event.target && (event.target as HTMLElement).tagName === 'SCRIPT') {
+      const src = (event.target as HTMLScriptElement).src;
+      // Prevent errors for localhost resources when in production
+      if (src && (
+          src.includes('localhost:') || 
+          src.includes('[::1]:') || 
+          src.includes('@vite/client')
+      )) {
+        console.warn(`Ignored error loading development resource: ${src}`);
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }
+  }, true);
+})();
+
 /**
  * Jackalopes Game - WordPress Plugin Integration
  * 
@@ -22,10 +74,10 @@ setupWPGameIntegration();
  * This function ensures that UI elements are properly positioned within the game container
  * @param containerId The ID of the container element
  */
-function setupContainedUI(containerId: string) {
+function setupContainedUI(containerId: string): MutationObserver | null {
   // Get the container element
   const container = document.getElementById(containerId);
-  if (!container) return;
+  if (!container) return null;
   
   // Add a class to identify this as our container
   container.classList.add('jackalopes-game-container');
@@ -100,8 +152,8 @@ function setupFullscreenHandling(container: HTMLElement) {
     fullscreenBtn = document.createElement('button');
     fullscreenBtn.className = 'fullscreen-button fixed-ui fixed-top-right';
     fullscreenBtn.innerHTML = 'Fullscreen';
-    fullscreenBtn.style.marginTop = '10px';
-    fullscreenBtn.style.marginRight = '10px';
+    (fullscreenBtn as HTMLElement).style.marginTop = '10px';
+    (fullscreenBtn as HTMLElement).style.marginRight = '10px';
     container.appendChild(fullscreenBtn);
   }
   
@@ -140,7 +192,7 @@ function setupFullscreenHandling(container: HTMLElement) {
 declare global {
   interface Window {
     initJackalopesGame: (containerId: string, options?: any) => void;
-    jackalopesGameSettings?: any;
+    jackalopesGameSettings?: JackalopesGameSettings;
   }
 }
 
@@ -148,7 +200,8 @@ declare global {
 let uiObserver: MutationObserver | null = null;
 
 // Modify the existing initialization function to include UI containment
-window.initJackalopesGame = (containerId, options = {}) => {
+// Export the function so it can be imported in test.html
+export function initJackalopesGame(containerId: string, options: any = {}) {
   // Get the container element
   const container = document.getElementById(containerId);
   if (!container) {
@@ -159,11 +212,17 @@ window.initJackalopesGame = (containerId, options = {}) => {
   // Store game settings globally
   window.jackalopesGameSettings = {
     serverUrl: options.serverUrl || 'ws://localhost:8082',
-    isFullscreen: options.fullscreen || false,
     assetsUrl: options.assetsUrl || '',
-    containerId,
-    isWordPress: true
+    // Add required properties with default values
+    ajaxUrl: options.ajaxUrl || '',
+    pluginUrl: options.pluginUrl || '',
+    debug: options.debugMode || false,
+    nonce: options.nonce || '',
+    sessionKey: options.sessionKey || localStorage.getItem('jackalopes_session_key') || 'WP-DEFAULT'
   };
+  
+  // Store container ID in a data attribute for reference
+  container.dataset.containerId = containerId;
   
   // Initialize UI containment to ensure elements stay in container
   uiContainer.initUiContainment(containerId);
@@ -184,7 +243,10 @@ window.initJackalopesGame = (containerId, options = {}) => {
       uiObserver = null;
     }
   });
-};
+}
+
+// Also assign to window for backwards compatibility
+window.initJackalopesGame = initJackalopesGame;
 
 // If not in a WordPress environment (standalone development), initialize immediately
 if (!window.jackalopesGameSettings && process.env.NODE_ENV === 'development') {
