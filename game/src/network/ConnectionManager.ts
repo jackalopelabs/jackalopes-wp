@@ -87,67 +87,22 @@ export class ConnectionManager extends EventEmitter {
   // Add this property near the other properties at the top of the class
   private lastErrorTime: number = 0; // Track the last time we emitted an error event
   
-  constructor(private serverUrl: string = 'wss://staging.games.bonsai.so/websocket/') {
+  constructor(private serverUrl: string = 'ws://localhost:8082') {
     super();
     
     // Don't reset the static player count here - we'll use localStorage instead
     // for cross-browser coordination
     
-    // Set up a storage event listener to detect changes from other tabs
-    window.addEventListener('storage', (event) => {
-      if (event.key === 'jackalopes_player_count') {
-        console.error(`⭐ Detected player count change in another tab: ${event.oldValue} -> ${event.newValue}`);
-        
-        // Reset our playerIndex so we get a new assignment on next connection
-        if (this.playerIndex !== -1) {
-          this.playerIndex = -1;
-          console.error(`⭐ Reset local player index due to change in another tab`);
-        }
-      }
-    });
+    // Set up a storage event listener to track player count across tabs
+    window.addEventListener('storage', this.handleStorageEvent.bind(this));
+
+    // Create a player ID for this session
+    this.createPlayerId();
     
-    // Listen for the custom reset event (fires in this tab)
-    window.addEventListener('jackalopes_playercount_reset', (e: any) => {
-      console.error('⭐ Detected player count reset in this tab');
-      
-      // Reset our player index
-      this.playerIndex = -1;
-      ConnectionManager.playerCount = -1;
-      
-      // Force refresh to get the new player type
-      if (confirm('Player count has been reset. Reload now to get your new character assignment?')) {
-        window.location.reload();
-      }
-    });
-    
-    // Some early initialization
-    this.log(LogLevel.INFO, `Initializing ConnectionManager with server: ${this.serverUrl}`);
-    
-    // Add optional WebSocket path segment if it's not already there
-    if (!this.serverUrl.endsWith('/websocket/') && !this.serverUrl.endsWith('/websocket')) {
-      this.log(LogLevel.INFO, 'Server URL is missing websocket path, checking format...');
-      
-      // Parse URL to rebuild with websocket path
-      const urlParts = this.serverUrl.match(/^(ws:\/\/|wss:\/\/)(.*?)(?::(\d+))?$/);
-      if (urlParts) {
-        const [, protocol, host, port] = urlParts;
-        // Rebuild the URL with the /websocket/ path
-        this.serverUrl = `${protocol}${host}${port ? `:${port}` : ''}/websocket/`;
-        this.log(LogLevel.INFO, 'Updated server URL to include websocket path:', this.serverUrl);
-      }
-    }
-    
-    // Initialize the EntityStateObserver with debug level based on global setting
-    // Use window.jackalopesGame?.debugLevel if available, otherwise use LogLevel-based logic
-    if (typeof window !== 'undefined' && window.jackalopesGame && window.jackalopesGame.debugLevel !== undefined) {
-      entityStateObserver.setDebugLevel(window.jackalopesGame.debugLevel);
-    } else {
-      // Fallback to old behavior
-      entityStateObserver.setDebug(this.logLevel >= LogLevel.DEBUG);
-    }
-    
-    // Connect after a short delay to ensure DOM is ready
-    setTimeout(() => this.connect(), 500);
+    // Attempt to connect after a short delay
+    setTimeout(() => {
+        this.connect();
+    }, 100);
   }
 
   // Helper methods for logging with different levels
@@ -242,12 +197,11 @@ export class ConnectionManager extends EventEmitter {
       this.offlineMode = false;
       this.connectionFailed = false;
       
-      // For staging.games.bonsai.so, check if it's even reachable first
-      if (this.serverUrl.includes('staging.games.bonsai.so')) {
-        this.log(LogLevel.INFO, 'Trying to connect to staging server - checking availability first...');
+      // Check for dev server reachability
+      if (this.serverUrl.includes('localhost')) {
+        this.log(LogLevel.INFO, 'Trying to connect to development server - checking availability first...');
         this.checkServerAvailability();
       } else {
-        // For other servers, proceed with normal connection
         this.createWebSocketConnection();
       }
     } catch (error) {
@@ -1370,5 +1324,32 @@ export class ConnectionManager extends EventEmitter {
     
     // Also check the static player count as fallback
     return ConnectionManager.playerCount >= 3; // 0-based, so 3 = 4 players
+  }
+
+  /**
+   * Handle storage events for cross-tab communication
+   */
+  private handleStorageEvent(event: StorageEvent): void {
+    if (event.key === 'jackalopes_player_count') {
+        console.error(`⭐ Detected player count change in another tab: ${event.oldValue} -> ${event.newValue}`);
+        
+        // Reset our playerIndex so we get a new assignment on next connection
+        if (this.playerIndex !== -1) {
+            this.playerIndex = -1;
+            console.error(`⭐ Reset local player index due to change in another tab`);
+        }
+    }
+  }
+
+  /**
+   * Create a unique player ID for this session
+   */
+  private createPlayerId(): void {
+    // Use existing ID if already set
+    if (this.playerId) return;
+    
+    // Generate a random ID
+    this.playerId = `player-${Math.random().toString(36).substring(2, 9)}`;
+    this.log(LogLevel.INFO, `Created player ID: ${this.playerId}`);
   }
 } 

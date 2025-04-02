@@ -26,6 +26,9 @@ import { HealthBar } from './components/HealthBar' // Import the HealthBar compo
 import { AudioToggleButton } from './components/AudioToggleButton' // Import the AudioToggleButton component
 import { initDebugSystem, DEBUG_LEVELS } from './utils/debugUtils';
 import { PlayerPositionTracker } from './components/PlayerPositionTracker';
+import { IntroScreenManager } from './components/IntroScreen/IntroScreenManager';
+import { ScoreDisplay } from './components/ScoreDisplay'; // Import the ScoreDisplay component
+import ReactDOM from 'react-dom/client'; // Import for RemoveUnwantedElements
 import entityStateObserver from './network/EntityStateObserver';
 import soundManager from './components/SoundManager';
 // Add import for MultiplayerSyncManager
@@ -34,8 +37,6 @@ import { useGLTF } from '@react-three/drei';
 import { MercModelPath, JackalopeModelPath } from './assets';
 import { ModelLoader } from './components/ModelLoader';
 import { ModelChecker } from './components/ModelChecker';
-import ScoreDisplay from './components/ScoreDisplay'; // Import the new ScoreDisplay component
-import { IntroScreenManager } from './components/IntroScreen';
 
 // Add TypeScript declaration for window.__setGraphicsQuality
 declare global {
@@ -1349,8 +1350,8 @@ export function App() {
         };
     }, []);
     
-    // Create a shared ConnectionManager instance with the staging server URL
-    const [connectionManager] = useState(() => new ConnectionManager('ws://staging.games.bonsai.so/websocket/'));
+    // Create a shared ConnectionManager instance with the development server URL
+    const [connectionManager] = useState(() => new ConnectionManager('ws://localhost:8082'));
     // Add state to track if we're in offline mode
     const [isOfflineMode, setIsOfflineMode] = useState(false);
     // Track if notification is visible
@@ -4531,3 +4532,46 @@ export function App() {
 }
 
 export default App
+
+// Component to remove unwanted links and SVGs
+const RemoveUnwantedElements = () => {
+  useEffect(() => {
+    // Function to remove any jackalope.io or bonsai.so links and SVGs
+    const removeElements = () => {
+      const elementsToRemove = document.querySelectorAll('a[href*="jackalope.io"], a[href*="bonsai.so"]');
+      elementsToRemove.forEach(el => {
+        console.log('Removing unwanted element:', el);
+        el.remove();
+      });
+    };
+
+    // Run immediately
+    removeElements();
+
+    // Set up a MutationObserver to catch any dynamically added elements
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach(() => {
+        removeElements();
+      });
+    });
+
+    // Start observing
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  return null;
+};
+
+// Attach the component to App
+if (typeof document !== 'undefined') {
+  const removeElementsDiv = document.createElement('div');
+  document.body.appendChild(removeElementsDiv);
+  ReactDOM.createRoot(removeElementsDiv).render(<RemoveUnwantedElements />);
+}
