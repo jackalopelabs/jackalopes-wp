@@ -5,7 +5,15 @@
 // Initialize once the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
   console.log('WordPress helper script loaded');
-  initializeGame();
+  
+  // Make sure React and ReactDOM are available before proceeding
+  if (checkReactAvailability()) {
+    initializeGame();
+  } else {
+    console.log('Waiting for React to load before initializing game...');
+    // Check again in 500ms
+    setTimeout(checkReactAndInitialize, 500);
+  }
   
   // Add retry button functionality
   document.querySelectorAll('.error-retry').forEach(button => {
@@ -17,6 +25,27 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+
+// Check for React availability and initialize when available
+function checkReactAndInitialize(retryCount = 0) {
+  const maxRetries = 10;
+  
+  if (checkReactAvailability()) {
+    console.log('React is available, initializing game');
+    initializeGame();
+  } else if (retryCount < maxRetries) {
+    console.log(`Waiting for React (attempt ${retryCount + 1}/${maxRetries})`);
+    setTimeout(() => checkReactAndInitialize(retryCount + 1), 500);
+  } else {
+    console.error('React was not loaded after several attempts. Cannot initialize game.');
+    showError('Failed to load React. Please check your browser console for more information.');
+  }
+}
+
+// Check if React and ReactDOM are available
+function checkReactAvailability() {
+  return typeof React !== 'undefined' && typeof ReactDOM !== 'undefined';
+}
 
 // Main initialization function
 function initializeGame() {
@@ -67,7 +96,7 @@ function checkAndInitialize(retryCount = 0) {
     console.log(`Retry ${retryCount + 1}/${maxRetries} - waiting for initJackalopesGame`);
     setTimeout(() => checkAndInitialize(retryCount + 1), 500);
   } else {
-    console.error('Failed to initialize game after multiple retries');
+    console.error('Failed to initialize game after maximum retries');
     showError('Failed to load the game. Please refresh the page and try again.');
   }
 }

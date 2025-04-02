@@ -50,6 +50,36 @@ function jackalopes_wp_shortcode_callback($atts) {
     ?>
     <div class="jackalopes-game-container <?php echo esc_attr($attributes['class']); ?>" style="<?php echo $custom_css; ?>">
         <script>
+        // Check if React is already loaded, if not, load it
+        (function() {
+            function loadScript(src, id, callback) {
+                if (document.getElementById(id)) {
+                    if (callback) callback();
+                    return;
+                }
+                
+                var script = document.createElement('script');
+                script.id = id;
+                script.src = src;
+                script.async = false;
+                
+                if (callback) {
+                    script.onload = callback;
+                }
+                
+                document.head.appendChild(script);
+            }
+            
+            // Check if React is already loaded
+            if (typeof React === 'undefined') {
+                console.log('React not loaded, loading from CDN...');
+                loadScript('https://unpkg.com/react@18/umd/react.production.min.js', 'react-fallback', function() {
+                    // After React loads, load ReactDOM
+                    loadScript('https://unpkg.com/react-dom@18/umd/react-dom.production.min.js', 'react-dom-fallback');
+                });
+            }
+        })();
+        
         // Fix asset path issue before game loads
         (function() {
             // Helper function to intercept and fix asset fetch requests

@@ -1,5 +1,6 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import * as ReactDOMClient from 'react-dom/client';
+import * as ReactDOM from 'react-dom';
 import App from './App';
 import './index.css';
 import { setupWPGameIntegration } from './utils/wpIntegration';
@@ -15,6 +16,12 @@ import { JackalopesGameSettings, JackalopesGameOptions } from './types/wordpress
  * This is the entry point for the WordPress plugin integration.
  * The game will be initialized when the WordPress shortcode is loaded.
  */
+
+// Explicitly ensure React is available in the global scope
+if (typeof window !== 'undefined') {
+  window.React = React;
+  window.ReactDOM = ReactDOM;
+}
 
 // Initialize WordPress integration
 setupWPGameIntegration();
@@ -101,8 +108,8 @@ function setupFullscreenHandling(container: HTMLElement) {
     fullscreenBtn = document.createElement('button');
     fullscreenBtn.className = 'fullscreen-button fixed-ui fixed-top-right';
     fullscreenBtn.innerHTML = 'Fullscreen';
-    fullscreenBtn.style.marginTop = '10px';
-    fullscreenBtn.style.marginRight = '10px';
+    (fullscreenBtn as HTMLElement).style.marginTop = '10px';
+    (fullscreenBtn as HTMLElement).style.marginRight = '10px';
     container.appendChild(fullscreenBtn);
   }
   
@@ -228,7 +235,7 @@ function initJackalopesGame(containerId: string, options: JackalopesGameOptions 
   
   // Initialize the React app
   try {
-    const root = ReactDOM.createRoot(container);
+    const root = ReactDOMClient.createRoot(container);
     const gameSettings = window.jackalopesGameSettings || {};
     
     root.render(
@@ -281,7 +288,7 @@ if (!window.jackalopesGameSettings && process.env.NODE_ENV === 'development') {
     localStorage.setItem('jackalopes_session_key', sessionKey);
     
     // Simulated standalone initialization for development - use the full game App
-    const root = ReactDOM.createRoot(devContainer);
+    const root = ReactDOMClient.createRoot(devContainer);
     root.render(
       <React.StrictMode>
         <App />

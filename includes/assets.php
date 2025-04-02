@@ -22,11 +22,28 @@ function jackalopes_wp_register_assets() {
         JACKALOPES_WP_VERSION
     );
     
+    // Register React and ReactDOM
+    wp_register_script(
+        'react',
+        'https://unpkg.com/react@18/umd/react.production.min.js',
+        [],
+        '18.2.0',
+        false // Load in header
+    );
+    
+    wp_register_script(
+        'react-dom',
+        'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
+        ['react'],
+        '18.2.0',
+        false // Load in header
+    );
+    
     // Register WordPress helper script
     wp_register_script(
         'jackalopes-wp-helper',
         JACKALOPES_WP_PLUGIN_URL . 'game/src/WordPress.js',
-        [],
+        ['react', 'react-dom'],
         JACKALOPES_WP_VERSION,
         false // Load in header
     );
@@ -35,7 +52,7 @@ function jackalopes_wp_register_assets() {
     wp_register_script(
         'jackalopes-game',
         JACKALOPES_WP_PLUGIN_URL . 'game/dist/assets/main.js',
-        ['jackalopes-wp-helper'], // Depend on helper script
+        ['jackalopes-wp-helper', 'react', 'react-dom'], // Depend on helper script and React
         JACKALOPES_WP_VERSION,
         true
     );
@@ -43,7 +60,7 @@ function jackalopes_wp_register_assets() {
     // Add script attributes for module type
     add_filter('script_loader_tag', function($tag, $handle) {
         if ('jackalopes-game' === $handle) {
-            return str_replace('<script ', '<script type="module" crossorigin="anonymous" ', $tag);
+            return str_replace('<script ', '<script type="text/javascript" crossorigin="anonymous" ', $tag);
         }
         return $tag;
     }, 10, 2);
@@ -147,6 +164,10 @@ function jackalopes_wp_register_assets() {
 function jackalopes_wp_enqueue_game_assets() {
     // Enqueue main game styles
     wp_enqueue_style('jackalopes-game-styles');
+    
+    // Enqueue React and ReactDOM
+    wp_enqueue_script('react');
+    wp_enqueue_script('react-dom');
     
     // Enqueue WordPress helper script
     wp_enqueue_script('jackalopes-wp-helper');

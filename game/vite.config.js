@@ -111,7 +111,16 @@ export default defineConfig({
         entryFileNames: 'assets/[name].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name].[ext]',
+        format: 'iife',
+        // Add proper globals for React
+        globals: {
+          'react': 'React',
+          'react-dom': 'ReactDOM',
+          'react-dom/client': 'ReactDOM'
+        }
       },
+      // External dependencies that should not be bundled
+      external: ['react', 'react-dom', 'react-dom/client']
     },
     manifest: true,
     assetsInlineLimit: 0,
