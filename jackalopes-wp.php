@@ -78,6 +78,9 @@ function jackalopes_wp_init() {
     
     // Create .htaccess file for assets directory to fix MIME types
     jackalopes_wp_create_assets_htaccess();
+    
+    // Add action to inject canvas fix styles
+    add_action('wp_head', 'jackalopes_wp_inject_canvas_fix_styles', 999);
 }
 
 /**
@@ -135,6 +138,46 @@ EOT;
         
         file_put_contents($htaccess_path, $htaccess_content);
     }
+}
+
+/**
+ * Inject styles to fix canvas display issues (black right half)
+ */
+function jackalopes_wp_inject_canvas_fix_styles() {
+    ?>
+    <style>
+        /* Fix for ThreeJS canvas display issues */
+        .jackalopes-game-container {
+            width: 100% !important;
+            height: 600px !important;
+            position: relative !important;
+            overflow: hidden !important;
+        }
+        
+        .jackalopes-game-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+        }
+        
+        /* Ensure the game container has full width */
+        #jackalopes-game {
+            width: 100% !important;
+            height: 100% !important;
+            display: block !important; 
+            position: relative !important;
+        }
+        
+        /* Fix for React Three Fiber canvas */
+        div[class*="canvas3d"] {
+            width: 100% !important;
+            height: 100% !important;
+        }
+    </style>
+    <?php
 }
 
 // Initialize the plugin

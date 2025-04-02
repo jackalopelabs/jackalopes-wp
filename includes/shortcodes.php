@@ -49,6 +49,71 @@ function jackalopes_wp_shortcode_callback($atts) {
     ob_start();
     ?>
     <div class="jackalopes-game-container <?php echo esc_attr($attributes['class']); ?>" style="<?php echo $custom_css; ?>">
+        <style>
+            /* Basic container styles to prevent layout issues */
+            .jackalopes-game-container {
+                position: relative;
+                overflow: hidden;
+                background: #000;
+                border-radius: 5px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            
+            #jackalopes-game {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .game-loading {
+                text-align: center;
+                color: #fff;
+                padding: 20px;
+            }
+            
+            .loading-spinner {
+                border: 5px solid rgba(255, 255, 255, 0.3);
+                border-radius: 50%;
+                border-top: 5px solid #3498db;
+                width: 40px;
+                height: 40px;
+                animation: jackalopes-spin 1s linear infinite;
+                margin: 20px auto;
+            }
+            
+            @keyframes jackalopes-spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
+            .game-error {
+                text-align: center;
+                background: rgba(220, 53, 69, 0.9);
+                color: white;
+                padding: 20px;
+                border-radius: 5px;
+                max-width: 80%;
+                margin: 0 auto;
+            }
+            
+            .error-retry {
+                background: #fff;
+                color: #dc3545;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                cursor: pointer;
+                margin-top: 10px;
+            }
+            
+            .error-retry:hover {
+                background: #f8f9fa;
+            }
+        </style>
+        <link rel="stylesheet" type="text/css" href="<?php echo esc_url(JACKALOPES_WP_PLUGIN_URL . 'main-css.php?t=' . time()); ?>">
         <script>
         // Setup React safety checks to prevent multiple versions
         // Use the version WordPress is actually loading
@@ -145,6 +210,7 @@ function jackalopes_wp_shortcode_callback($atts) {
                 <button class="error-retry">Retry</button>
             </div>
         </div>
+        <script src="<?php echo esc_url(JACKALOPES_WP_PLUGIN_URL . 'canvas-fix.js?t=' . time()); ?>"></script>
     </div>
     <?php
     return ob_get_clean();

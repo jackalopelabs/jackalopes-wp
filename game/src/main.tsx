@@ -267,6 +267,19 @@ function initJackalopesGame(containerId: string, options: JackalopesGameOptions 
   
   // Initialize the React app
   try {
+    // Fix to ensure container fills properly
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    
+    // Log dimensions for debugging
+    console.log(`Initializing canvas with dimensions: ${containerWidth}x${containerHeight}`);
+    
+    // Ensure container has proper styling for canvas
+    container.style.position = 'relative';
+    container.style.overflow = 'hidden';
+    container.style.width = `${containerWidth}px`;
+    container.style.height = `${containerHeight}px`;
+    
     // We need a function component wrapper to safely use hooks
     const GameWrapper = (props: any) => {
       // Hooks can safely be used inside the functional component

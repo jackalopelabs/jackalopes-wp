@@ -3871,6 +3871,53 @@ export function App() {
         }
     };
     
+    // Add effect to ensure proper canvas sizing
+    useEffect(() => {
+        const resizeCanvas = () => {
+            // Find the canvas elements
+            const canvases = document.querySelectorAll('.jackalopes-game-container canvas');
+            
+            // Get the container
+            const container = document.querySelector('.jackalopes-game-container');
+            if (!container) return;
+            
+            // Get container dimensions
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            console.log(`Resizing canvases to ${width}x${height}`);
+            
+            // Update all canvases
+            canvases.forEach(canvas => {
+                // Force canvas to use the full container size
+                (canvas as HTMLCanvasElement).style.width = '100%';
+                (canvas as HTMLCanvasElement).style.height = '100%';
+                (canvas as HTMLCanvasElement).style.display = 'block';
+                (canvas as HTMLCanvasElement).style.position = 'absolute';
+                (canvas as HTMLCanvasElement).style.top = '0';
+                (canvas as HTMLCanvasElement).style.left = '0';
+            });
+            
+            // Also fix any canvas3d div elements
+            const canvas3dDivs = document.querySelectorAll('div[class*="canvas3d"]');
+            canvas3dDivs.forEach(div => {
+                (div as HTMLDivElement).style.width = '100%';
+                (div as HTMLDivElement).style.height = '100%';
+            });
+        };
+        
+        // Call immediately and on resize
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Also set a few timeouts to ensure everything is initialized
+        setTimeout(resizeCanvas, 100);
+        setTimeout(resizeCanvas, 500);
+        setTimeout(resizeCanvas, 1000);
+        
+        return () => window.removeEventListener('resize', resizeCanvas);
+    }, []);
+    
     return (
         <>
             {/* Add styles to fix Leva panel positioning and prevent UI disruption */}
