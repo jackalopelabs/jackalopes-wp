@@ -61,6 +61,18 @@ function jackalopes_wp_game_shortcode($atts = []) {
             <div class="jackalopes-loading-message">Loading Jackalopes...</div>
         </div>
         
+        <noscript>
+            <div class="jackalopes-error" style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin: 10px;">
+                <h3>JavaScript Required</h3>
+                <p>Please enable JavaScript to play Jackalopes. This game requires JavaScript to run.</p>
+            </div>
+        </noscript>
+        
+        <div class="jackalopes-error" style="display: none; background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin: 10px;">
+            <h3>Game Loading Error</h3>
+            <p>There was an error loading the Jackalopes game. Please check your browser console for more information.</p>
+        </div>
+        
         <style>
             /* Inline critical CSS to ensure proper positioning */
             #<?php echo esc_attr($game_id); ?> {
@@ -95,36 +107,71 @@ function jackalopes_wp_game_shortcode($atts = []) {
                 height: 100vh !important;
                 z-index: 9999 !important;
             }
+            .jackalopes-loading-spinner {
+                border: 5px solid rgba(255, 255, 255, 0.3);
+                border-radius: 50%;
+                border-top: 5px solid #3498db;
+                width: 50px;
+                height: 50px;
+                animation: jackalopes-spin 1s linear infinite;
+                margin: 0 auto 15px auto;
+            }
+            @keyframes jackalopes-spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
         </style>
     </div>
     <script>
         // Wait for the module to be fully loaded
         setTimeout(function() {
+            var container = document.getElementById('<?php echo esc_js($game_id); ?>');
+            
             // Initialize the game when the DOM is fully loaded
             if (typeof window.initJackalopesGame === 'function') {
-                window.initJackalopesGame('<?php echo esc_js($game_id); ?>', {
-                    fullscreen: <?php echo $atts['fullscreen'] === 'true' ? 'true' : 'false'; ?>,
-                    serverUrl: '<?php echo esc_js($atts['server']); ?>',
-                    disableUi: <?php echo $atts['disable_ui'] === 'true' ? 'true' : 'false'; ?>,
-                    disableThreejs: <?php echo $atts['disable_threejs'] === 'true' ? 'true' : 'false'; ?>
-                });
-                
-                // Add event listener for fullscreen changes
-                document.addEventListener('fullscreenchange', function() {
-                    var container = document.getElementById('<?php echo esc_js($game_id); ?>');
-                    if (document.fullscreenElement === container) {
-                        container.classList.add('fullscreen-active');
-                    } else {
-                        container.classList.remove('fullscreen-active');
-                    }
-                });
-                
-                // Ensure all UI elements stay within the container
-                ensureContainedUI('<?php echo esc_js($game_id); ?>');
+                try {
+                    window.initJackalopesGame('<?php echo esc_js($game_id); ?>', {
+                        fullscreen: <?php echo $atts['fullscreen'] === 'true' ? 'true' : 'false'; ?>,
+                        serverUrl: '<?php echo esc_js($atts['server']); ?>',
+                        disableUi: <?php echo $atts['disable_ui'] === 'true' ? 'true' : 'false'; ?>,
+                        disableThreejs: <?php echo $atts['disable_threejs'] === 'true' ? 'true' : 'false'; ?>
+                    });
+                    
+                    // Add event listener for fullscreen changes
+                    document.addEventListener('fullscreenchange', function() {
+                        if (document.fullscreenElement === container) {
+                            container.classList.add('fullscreen-active');
+                        } else {
+                            container.classList.remove('fullscreen-active');
+                        }
+                    });
+                    
+                    // Ensure all UI elements stay within the container
+                    ensureContainedUI('<?php echo esc_js($game_id); ?>');
+                } catch (error) {
+                    console.error('Error initializing game:', error);
+                    showGameError(container);
+                }
             } else {
                 console.error('Jackalopes game initialization function not found. Make sure all assets are properly loaded.');
+                showGameError(container);
             }
         }, 100);
+        
+        // Helper function to display error message
+        function showGameError(container) {
+            if (container) {
+                var loadingElements = container.querySelectorAll('.jackalopes-loading');
+                for (var i = 0; i < loadingElements.length; i++) {
+                    loadingElements[i].style.display = 'none';
+                }
+                
+                var errorElements = container.querySelectorAll('.jackalopes-error');
+                for (var i = 0; i < errorElements.length; i++) {
+                    errorElements[i].style.display = 'block';
+                }
+            }
+        }
         
         // Helper function to ensure UI elements stay contained
         function ensureContainedUI(containerId) {

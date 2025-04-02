@@ -47,6 +47,27 @@ interface Console {
   info: (message?: any, ...optionalParams: any[]) => void;
 }
 
+interface JackalopesGameSettings {
+  ajaxUrl?: string;
+  pluginUrl?: string;
+  assetsUrl?: string;
+  serverUrl?: string;
+  debug?: boolean;
+  nonce?: string;
+  isSecure?: boolean;
+  containerId?: string;
+  isFullscreen?: boolean;
+  isWordPress?: boolean;
+}
+
+interface JackalopesGameOptions {
+  fullscreen?: boolean;
+  serverUrl?: string;
+  disableUi?: boolean;
+  disableThreejs?: boolean;
+  assetsUrl?: string;
+}
+
 declare global {
   interface Window {
     initJackalopesGame: (containerId: string, options?: JackalopesGameOptions) => void;

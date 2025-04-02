@@ -1,0 +1,18 @@
+# Jackalopes WP Git Cleanup Commands
+# Run these commands one by one to clean up your repository
+
+# 1. Remove node_modules from Git tracking (files remain on disk)
+git rm -r --cached node_modules
+
+# 2. Remove .map files from Git tracking
+git rm --cached "*.map"
+
+# 3. Apply the new .gitignore
+git add .gitignore
+
+# 4. Check what's left to commit
+git status
+
+# 5. When ready, commit your changes
+# git add -A
+# git commit -m "Clean up repository and update .gitignore" 

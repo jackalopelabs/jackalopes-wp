@@ -4,6 +4,7 @@ import App from './App';
 import './index.css';
 import { setupWPGameIntegration } from './utils/wpIntegration';
 import uiContainer from './utils/ui-container';
+import { fixProtocol } from './utils/assetLoader';
 
 // Import types from shared file
 import { JackalopesGameSettings, JackalopesGameOptions } from './types/wordpress';
@@ -25,7 +26,7 @@ setupWPGameIntegration();
 function setupContainedUI(containerId: string) {
   // Get the container element
   const container = document.getElementById(containerId);
-  if (!container) return;
+  if (!container) return null;
   
   // Add a class to identify this as our container
   container.classList.add('jackalopes-game-container');
@@ -44,7 +45,7 @@ function setupContainedUI(containerId: string) {
       // Check if the element is not already a child of our container
       if (element.parentElement !== container) {
         // Get the current computed style to preserve positioning
-        const style = window.getComputedStyle(element);
+        const style = window.getComputedStyle(element as HTMLElement);
         const position = style.position;
         const top = style.top;
         const left = style.left;
@@ -139,16 +140,42 @@ function setupFullscreenHandling(container: HTMLElement) {
 // Extend the window interface for global initialization
 declare global {
   interface Window {
-    initJackalopesGame: (containerId: string, options?: any) => void;
-    jackalopesGameSettings?: any;
+    initJackalopesGame: (containerId: string, options?: JackalopesGameOptions) => void;
+    jackalopesGameSettings?: JackalopesGameSettings;
   }
 }
 
 // Store the observer for cleanup
 let uiObserver: MutationObserver | null = null;
 
-// Modify the existing initialization function to include UI containment
-window.initJackalopesGame = (containerId, options = {}) => {
+/**
+ * Helper function to ensure all URLs use the correct protocol
+ * @param settings The game settings object
+ * @returns Updated settings object with fixed URLs
+ */
+const fixGameSettingsProtocol = (settings: JackalopesGameSettings): JackalopesGameSettings => {
+  // If we're on HTTPS, make sure all URLs are either HTTPS or protocol-relative
+  const isHttps = window.location.protocol === 'https:';
+  
+  if (isHttps) {
+    if (settings.serverUrl && settings.serverUrl.startsWith('ws://')) {
+      settings.serverUrl = settings.serverUrl.replace('ws://', 'wss://');
+    }
+    
+    if (settings.assetsUrl) {
+      settings.assetsUrl = fixProtocol(settings.assetsUrl);
+    }
+    
+    if (settings.pluginUrl) {
+      settings.pluginUrl = fixProtocol(settings.pluginUrl);
+    }
+  }
+  
+  return settings;
+};
+
+// Define the function separately so it can be both exported and attached to window
+function initJackalopesGame(containerId: string, options: JackalopesGameOptions = {}) {
   // Get the container element
   const container = document.getElementById(containerId);
   if (!container) {
@@ -156,23 +183,33 @@ window.initJackalopesGame = (containerId, options = {}) => {
     return;
   }
   
+  // Extract server URL - default to secure WebSocket for HTTPS sites
+  const isSecureSite = window.location.protocol === 'https:';
+  const defaultServerUrl = isSecureSite 
+    ? 'wss://' + window.location.host + '/websocket/' 
+    : 'ws://' + window.location.host + '/websocket/';
+  
   // Store game settings globally
-  window.jackalopesGameSettings = {
-    serverUrl: options.serverUrl || 'ws://localhost:8082',
+  window.jackalopesGameSettings = fixGameSettingsProtocol({
+    serverUrl: options.serverUrl || options.server || defaultServerUrl,
     isFullscreen: options.fullscreen || false,
     assetsUrl: options.assetsUrl || '',
     containerId,
-    isWordPress: true
-  };
+    isWordPress: true,
+    isSecure: isSecureSite
+  });
   
   // Initialize UI containment to ensure elements stay in container
   uiContainer.initUiContainment(containerId);
   
   // Set up the contained UI
-  uiObserver = setupContainedUI(containerId);
+  const observer = setupContainedUI(containerId);
+  if (observer) {
+    uiObserver = observer;
+  }
   
-  // The rest of your initialization code here...
-  console.log('Game initialized with contained UI');
+  // Log initialization information
+  console.log('Jackalopes game initializing with settings:', window.jackalopesGameSettings);
   
   // Make sure the container has the right classes
   container.classList.add('jackalopes-game-container');
@@ -184,7 +221,46 @@ window.initJackalopesGame = (containerId, options = {}) => {
       uiObserver = null;
     }
   });
-};
+  
+  // Initialize the React app
+  try {
+    const root = ReactDOM.createRoot(container);
+    const gameSettings = window.jackalopesGameSettings || {};
+    
+    root.render(
+      <React.StrictMode>
+        <App 
+          // Cast to any to bypass TypeScript prop validation
+          // We know these props exist in the component
+          {...{
+            serverUrl: gameSettings.serverUrl,
+            isFullscreen: gameSettings.isFullscreen,
+            isWordPress: true,
+            assetsUrl: gameSettings.assetsUrl
+          } as any}
+        />
+      </React.StrictMode>
+    );
+    console.log('Game React component successfully rendered');
+  } catch (error) {
+    console.error('Failed to initialize game:', error);
+    // Show error message in container
+    if (container) {
+      container.innerHTML = `
+        <div style="color: red; padding: 20px;">
+          <h3>Game initialization failed</h3>
+          <p>Please check console for details.</p>
+        </div>
+      `;
+    }
+  }
+}
+
+// Set it on the window object
+window.initJackalopesGame = initJackalopesGame;
+
+// Export the function for module usage
+export { initJackalopesGame };
 
 // If not in a WordPress environment (standalone development), initialize immediately
 if (!window.jackalopesGameSettings && process.env.NODE_ENV === 'development') {

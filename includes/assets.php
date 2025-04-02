@@ -34,10 +34,22 @@ function jackalopes_wp_register_assets() {
     // Add script attributes for module type
     add_filter('script_loader_tag', function($tag, $handle) {
         if ('jackalopes-game' === $handle) {
-            return str_replace('<script ', '<script type="module" ', $tag);
+            return str_replace('<script ', '<script type="module" crossorigin="anonymous" ', $tag);
         }
         return $tag;
     }, 10, 2);
+    
+    // Make asset URLs protocol-relative to avoid mixed content warnings
+    $assets_url = JACKALOPES_WP_PLUGIN_URL . 'game/dist/assets/';
+    // Remove http: or https: but keep the // for protocol-relative URLs
+    $assets_url = preg_replace('/^https?:/', '', $assets_url);
+    
+    // Get the WebSocket server URL, ensuring it's secure when site is secure
+    $server_url = jackalopes_wp_get_server_url();
+    // If site is HTTPS but server is ws://, convert to wss://
+    if (is_ssl() && strpos($server_url, 'ws://') === 0) {
+        $server_url = 'wss://' . substr($server_url, 5);
+    }
     
     // Add dynamic game settings
     wp_localize_script(
@@ -45,11 +57,12 @@ function jackalopes_wp_register_assets() {
         'jackalopesGameSettings',
         [
             'ajaxUrl' => admin_url('admin-ajax.php'),
-            'pluginUrl' => JACKALOPES_WP_PLUGIN_URL,
-            'assetsUrl' => JACKALOPES_WP_PLUGIN_URL . 'game/dist/assets/',
-            'serverUrl' => jackalopes_wp_get_server_url(),
+            'pluginUrl' => preg_replace('/^https?:/', '', JACKALOPES_WP_PLUGIN_URL),
+            'assetsUrl' => $assets_url,
+            'serverUrl' => $server_url,
             'debug' => WP_DEBUG,
             'nonce' => wp_create_nonce('jackalopes_game_nonce'),
+            'isSecure' => is_ssl()
         ]
     );
 }
@@ -88,7 +101,8 @@ function jackalopes_wp_get_server_url() {
     
     if (empty($server_url)) {
         // Use default URL based on current site
-        $server_url = 'ws://' . parse_url(home_url(), PHP_URL_HOST) . '/websocket/';
+        $protocol = is_ssl() ? 'wss://' : 'ws://';
+        $server_url = $protocol . parse_url(home_url(), PHP_URL_HOST) . '/websocket/';
     }
     
     return $server_url;
