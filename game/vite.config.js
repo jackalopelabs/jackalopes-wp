@@ -68,6 +68,30 @@ export default defineConfig({
           console.error(`Error during asset copy: ${err.message}`);
         }
       }
+    },
+    // Custom plugin to ensure global variable is exported properly
+    {
+      name: 'expose-game-function',
+      generateBundle(options, bundle) {
+        // Adding a banner to wrap the entire bundle in an IIFE
+        // and explicitly expose the initialization function
+        const mainBundle = bundle['assets/main.js'];
+        if (mainBundle) {
+          // Add a banner to ensure the initJackalopesGame function is properly exposed
+          mainBundle.code = `
+// Jackalopes WordPress Integration
+// Ensure the initialization function is properly exposed to the window object
+(function() {
+  ${mainBundle.code}
+  // Explicitly make initJackalopesGame available on window
+  if (typeof initJackalopesGame === 'function' && !window.initJackalopesGame) {
+    console.log('Exposing initJackalopesGame to window object');
+    window.initJackalopesGame = initJackalopesGame;
+  }
+})();
+`;
+        }
+      }
     }
   ],
   optimizeDeps: {
@@ -77,30 +101,26 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    emptyOutDir: true,
+    minify: true,
+    sourcemap: true,
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'src/main.tsx'),
-        test: 'test.html',
       },
       output: {
         entryFileNames: 'assets/[name].js',
-        chunkFileNames: 'assets/[name].[hash].js',
-        assetFileNames: ({ name }) => {
-          if (/\.(gltf|glb|fbx|obj|mtl|hdr|bin)$/.test(name ?? '')) {
-            return 'assets/[name].[ext]';
-          }
-          return 'assets/[name].[ext]';
-        },
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name].[ext]',
       },
     },
     manifest: true,
-    sourcemap: true,
     assetsInlineLimit: 0,
   },
+  publicDir: 'public',
   define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
-    'process.env.WORDPRESS_PLUGIN': JSON.stringify(true),
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
+    'process.env.VITE_APP_TITLE': JSON.stringify('Jackalopes'),
+    'process.env.VITE_DEBUG': JSON.stringify(process.env.VITE_DEBUG || 'false'),
   },
   resolve: {
     alias: {
@@ -113,6 +133,7 @@ export default defineConfig({
       host: 'localhost',
     },
     port: 3000,
-    https: true,
+    open: true,
+    cors: true,
   },
 }); 

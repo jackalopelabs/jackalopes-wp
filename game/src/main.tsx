@@ -248,16 +248,20 @@ function initJackalopesGame(containerId: string, options: JackalopesGameOptions 
     if (container) {
       container.innerHTML = `
         <div style="color: red; padding: 20px;">
-          <h3>Game initialization failed</h3>
-          <p>Please check console for details.</p>
+          <h2>Failed to initialize game</h2>
+          <p>${error instanceof Error ? error.message : String(error)}</p>
         </div>
       `;
     }
   }
 }
 
-// Set it on the window object
-window.initJackalopesGame = initJackalopesGame;
+// IMPORTANT: Explicitly set the initialization function on the window object
+// This ensures it's available globally for WordPress to call
+if (typeof window !== 'undefined') {
+  console.log('Setting initJackalopesGame on window object');
+  window.initJackalopesGame = initJackalopesGame;
+}
 
 // Export the function for module usage
 export { initJackalopesGame };

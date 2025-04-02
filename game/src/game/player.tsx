@@ -75,6 +75,21 @@ export const Player = forwardRef<EntityType, PlayerProps>(({ onMove, walkSpeed =
     const gltfResult = useGLTF(FpsArmsModelPath);
     const [modelError, setModelError] = useState<Error | null>(null);
     
+    // Preload FPS model - MOVED FROM OUTSIDE COMPONENT
+    useEffect(() => {
+        // Try to preload the fps model
+        findWorkingAssetPath(FPS_PATHS)
+            .then(path => {
+                console.log('[PRELOAD] Preloading FPS model from path:', path);
+                useGLTF.preload(path);
+            })
+            .catch(err => {
+                console.warn('[PRELOAD] Error preloading FPS model:', err);
+                // Fallback to the default path as a last resort
+                useGLTF.preload(FpsArmsModelPath);
+            });
+    }, []);
+    
     // Set up error handling for the model
     useEffect(() => {
       const loadModel = async () => {
@@ -1298,18 +1313,3 @@ export const PlayerControls = ({ children, thirdPersonView = false }: PlayerCont
         </KeyboardControls>
     )
 }
-
-// Update preload to use findWorkingAssetPath instead of a single path
-useEffect(() => {
-  // Try to preload the fps model
-  findWorkingAssetPath(FPS_PATHS)
-    .then(path => {
-      console.log('[PRELOAD] Preloading FPS model from path:', path);
-      useGLTF.preload(path);
-    })
-    .catch(err => {
-      console.warn('[PRELOAD] Error preloading FPS model:', err);
-      // Fallback to the default path as a last resort
-      useGLTF.preload(FpsArmsModelPath);
-    });
-}, []);

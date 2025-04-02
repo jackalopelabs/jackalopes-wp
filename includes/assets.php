@@ -22,11 +22,20 @@ function jackalopes_wp_register_assets() {
         JACKALOPES_WP_VERSION
     );
     
+    // Register WordPress helper script
+    wp_register_script(
+        'jackalopes-wp-helper',
+        JACKALOPES_WP_PLUGIN_URL . 'game/src/WordPress.js',
+        [],
+        JACKALOPES_WP_VERSION,
+        false // Load in header
+    );
+    
     // Register main game script
     wp_register_script(
         'jackalopes-game',
         JACKALOPES_WP_PLUGIN_URL . 'game/dist/assets/main.js',
-        [],
+        ['jackalopes-wp-helper'], // Depend on helper script
         JACKALOPES_WP_VERSION,
         true
     );
@@ -38,6 +47,71 @@ function jackalopes_wp_register_assets() {
         }
         return $tag;
     }, 10, 2);
+    
+    // Add inline CSS for game container
+    wp_add_inline_style('jackalopes-game-styles', '
+        .jackalopes-game-container {
+            position: relative;
+            overflow: hidden;
+            background: #000;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        #jackalopes-game {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .game-loading {
+            text-align: center;
+            color: #fff;
+            padding: 20px;
+        }
+        
+        .loading-spinner {
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 5px solid #3498db;
+            width: 40px;
+            height: 40px;
+            animation: jackalopes-spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes jackalopes-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .game-error {
+            text-align: center;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            max-width: 80%;
+            margin: 0 auto;
+        }
+        
+        .error-retry {
+            background: #fff;
+            color: #dc3545;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .error-retry:hover {
+            background: #f8f9fa;
+        }
+    ');
     
     // Make asset URLs protocol-relative to avoid mixed content warnings
     $assets_url = JACKALOPES_WP_PLUGIN_URL . 'game/dist/assets/';
@@ -74,11 +148,11 @@ function jackalopes_wp_enqueue_game_assets() {
     // Enqueue main game styles
     wp_enqueue_style('jackalopes-game-styles');
     
+    // Enqueue WordPress helper script
+    wp_enqueue_script('jackalopes-wp-helper');
+    
     // Enqueue main game script
     wp_enqueue_script('jackalopes-game');
-    
-    // Enqueue any additional dependencies
-    // wp_enqueue_script('three-js');
 }
 
 /**
