@@ -65,8 +65,8 @@ export class ConnectionManager {
    * @param isWordPress - Whether running in WordPress mode
    */
   constructor(serverUrl: string, isWordPress: boolean = false) {
-    // Use the provided URL or fallback to WordPress settings
-    this.serverUrl = serverUrl || (window.jackalopesGameSettings?.serverUrl || 'ws://localhost:8082');
+    // Use the provided URL or fallback to the staging server
+    this.serverUrl = serverUrl || 'ws://staging.games.bonsai.so/websocket/';
     this.isWordPress = isWordPress;
     
     // Initialize event listeners
@@ -132,6 +132,31 @@ export class ConnectionManager {
     // Debug log
     this.log(LogLevel.INFO, `Connecting to ${this.serverUrl} as ${playerName} in session ${sessionKey}`);
     
+    // First check if the server is available
+    return this.checkServerAvailability()
+      .then(isAvailable => {
+        if (!isAvailable) {
+          this.log(LogLevel.ERROR, 'Server is not available, falling back to offline mode');
+          this.triggerEvent(ConnectionEventType.ServerUnreachable, { message: 'Server unreachable' });
+          this.enableOfflineMode();
+          return true; // Resolve with success since we'll use offline mode
+        }
+        
+        // Continue with connection if server is available
+        return this.establishConnection();
+      })
+      .catch(error => {
+        this.log(LogLevel.ERROR, 'Server availability check failed:', error);
+        this.triggerEvent(ConnectionEventType.ServerUnreachable, { message: 'Server check failed' });
+        this.enableOfflineMode();
+        return true; // Resolve with success since we'll use offline mode
+      });
+  }
+  
+  /**
+   * Establish WebSocket connection
+   */
+  private establishConnection(): Promise<boolean> {
     return new Promise((resolve, reject) => {
       try {
         this.socket = new WebSocket(this.serverUrl);
@@ -834,6 +859,27 @@ export class ConnectionManager {
       default:
         return '[ConnectionManager]';
     }
+  }
+  
+  /**
+   * Check server availability
+   */
+  private checkServerAvailability(): Promise<boolean> {
+    // Convert WebSocket URL to HTTP for health check
+    const healthCheckUrl = this.serverUrl.replace('ws://', 'http://').replace('wss://', 'https://').replace('/websocket/', '/health-check');
+    
+    this.log(LogLevel.INFO, `Checking server availability at ${healthCheckUrl}`);
+    
+    return fetch(healthCheckUrl, { method: 'HEAD' })
+      .then(response => {
+        const isAvailable = response.ok;
+        this.log(LogLevel.INFO, `Server availability check: ${isAvailable ? 'AVAILABLE' : 'UNAVAILABLE'}`);
+        return isAvailable;
+      })
+      .catch(error => {
+        this.log(LogLevel.ERROR, 'Server availability check failed:', error);
+        return false;
+      });
   }
 }
 
