@@ -374,4 +374,42 @@ If you see 404 errors for specific assets in the browser console:
 3. Run the copy-assets.sh script manually
 4. Rebuild the plugin with `npm run build --prefix jackalopes-wp/game`
 
-The script creates placeholder files for missing assets to prevent JavaScript errors, but for optimal game experience, you should provide the actual model files. 
+The script creates placeholder files for missing assets to prevent JavaScript errors, but for optimal game experience, you should provide the actual model files.
+
+## UI Containment System
+
+When integrating the Jackalopes game into a WordPress site, UI elements were previously displayed outside the game container, appearing in the corners of the entire page. This has been fixed with our UI containment system that:
+
+1. **Contains UI Elements:** All game UI elements (buttons, controls, stats, etc.) are now properly contained within the game's container div.
+
+2. **Handles Fullscreen Mode:** When entering fullscreen mode, the UI elements remain visible and properly positioned within the fullscreen container.
+
+3. **Preserves Positioning:** UI elements maintain their relative positioning (top-left, top-right, etc.) but stay confined to the game container.
+
+### Usage
+
+The UI containment system is automatically enabled when using the `[jackalopes]` shortcode. No additional configuration is needed.
+
+You can customize some aspects with shortcode attributes:
+
+```
+[jackalopes width="800px" height="600px" fullscreen="true" disable_ui="false"]
+```
+
+### How It Works
+
+The system uses a combination of:
+
+1. **CSS Positioning:** Elements use relative/absolute positioning instead of fixed positioning.
+2. **DOM Observation:** A MutationObserver watches for new UI elements and ensures they stay in the container.
+3. **Fullscreen Management:** Special handling for fullscreen mode to preserve UI visibility.
+
+If you're extending the game with custom UI elements, add the class `game-ui-element` to ensure they're properly contained.
+
+### Troubleshooting
+
+If UI elements still appear outside the container:
+
+1. Make sure your theme doesn't override the positioning with higher-specificity CSS.
+2. Check for any custom JavaScript that might be moving elements outside the container.
+3. Verify that the game container has `position: relative` and `overflow: hidden`. 

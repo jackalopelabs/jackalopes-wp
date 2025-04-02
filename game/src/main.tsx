@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { setupWPGameIntegration } from './utils/wpIntegration';
+import uiContainer from './utils/ui-container';
 
 // Import types from shared file
 import { JackalopesGameSettings, JackalopesGameOptions } from './types/wordpress';
@@ -17,65 +18,172 @@ import { JackalopesGameSettings, JackalopesGameOptions } from './types/wordpress
 // Initialize WordPress integration
 setupWPGameIntegration();
 
-// Initialize the game when called from WordPress
-export const initJackalopesGame = (containerId: string, options: JackalopesGameOptions = {}) => {
+/**
+ * This function ensures that UI elements are properly positioned within the game container
+ * @param containerId The ID of the container element
+ */
+function setupContainedUI(containerId: string) {
+  // Get the container element
   const container = document.getElementById(containerId);
+  if (!container) return;
   
+  // Add a class to identify this as our container
+  container.classList.add('jackalopes-game-container');
+  
+  // Create a mutation observer to monitor changes to the DOM
+  const observer = new MutationObserver((mutations) => {
+    // Look for UI elements that might be using fixed positioning
+    const fixedElements = document.querySelectorAll(
+      '.fps-stats, .virtual-gamepad, .game-controls, .jackalopes-ui, .jackalopes-status, ' +
+      '.jackalopes-help, .loading-screen, .jackalopes-wordpress-notice'
+    );
+    
+    // Move any elements outside the container into the container
+    fixedElements.forEach(element => {
+      // Check if the element is not already a child of our container
+      if (element.parentElement !== container) {
+        // Get the current computed style to preserve positioning
+        const style = window.getComputedStyle(element);
+        const position = style.position;
+        const top = style.top;
+        const left = style.left;
+        const right = style.right;
+        const bottom = style.bottom;
+        
+        // Move the element into our container
+        container.appendChild(element);
+        
+        // Apply the right positioning class based on its original position
+        if (position === 'fixed' || position === 'absolute') {
+          element.classList.add('fixed-ui');
+          
+          // Determine which corner it belongs in
+          const topValue = parseInt(top);
+          const leftValue = parseInt(left);
+          const rightValue = parseInt(right);
+          const bottomValue = parseInt(bottom);
+          
+          if (topValue <= 50 && leftValue <= 50) {
+            element.classList.add('fixed-top-left');
+          } else if (topValue <= 50 && rightValue <= 50) {
+            element.classList.add('fixed-top-right');
+          } else if (bottomValue <= 50 && leftValue <= 50) {
+            element.classList.add('fixed-bottom-left');
+          } else if (bottomValue <= 50 && rightValue <= 50) {
+            element.classList.add('fixed-bottom-right');
+          }
+        }
+      }
+    });
+  });
+  
+  // Start observing the document body for DOM changes
+  observer.observe(document.body, { 
+    childList: true, 
+    subtree: true 
+  });
+  
+  // Setup fullscreen handling
+  setupFullscreenHandling(container);
+  
+  return observer;
+}
+
+/**
+ * Sets up fullscreen handling for the game container
+ */
+function setupFullscreenHandling(container: HTMLElement) {
+  // Create fullscreen button if it doesn't exist
+  let fullscreenBtn = container.querySelector('.fullscreen-button');
+  if (!fullscreenBtn) {
+    fullscreenBtn = document.createElement('button');
+    fullscreenBtn.className = 'fullscreen-button fixed-ui fixed-top-right';
+    fullscreenBtn.innerHTML = 'Fullscreen';
+    fullscreenBtn.style.marginTop = '10px';
+    fullscreenBtn.style.marginRight = '10px';
+    container.appendChild(fullscreenBtn);
+  }
+  
+  // Add fullscreen toggle functionality
+  fullscreenBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      if (container.requestFullscreen) {
+        container.requestFullscreen().then(() => {
+          container.classList.add('fullscreen-active');
+        }).catch(err => {
+          console.error('Error attempting to enable fullscreen:', err);
+        });
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().then(() => {
+          container.classList.remove('fullscreen-active');
+        }).catch(err => {
+          console.error('Error attempting to exit fullscreen:', err);
+        });
+      }
+    }
+  });
+  
+  // Handle fullscreen changes
+  document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement === container) {
+      container.classList.add('fullscreen-active');
+    } else {
+      container.classList.remove('fullscreen-active');
+    }
+  });
+}
+
+// Extend the window interface for global initialization
+declare global {
+  interface Window {
+    initJackalopesGame: (containerId: string, options?: any) => void;
+    jackalopesGameSettings?: any;
+  }
+}
+
+// Store the observer for cleanup
+let uiObserver: MutationObserver | null = null;
+
+// Modify the existing initialization function to include UI containment
+window.initJackalopesGame = (containerId, options = {}) => {
+  // Get the container element
+  const container = document.getElementById(containerId);
   if (!container) {
-    console.error(`Jackalopes game container with ID "${containerId}" not found.`);
+    console.error(`Container element with ID "${containerId}" not found`);
     return;
   }
   
-  // Get WordPress settings if available
-  const wpSettings: JackalopesGameSettings = window.jackalopesGameSettings || {
-    ajaxUrl: '',
-    pluginUrl: '',
-    assetsUrl: '',
-    serverUrl: '',
-    debug: false,
-    nonce: '',
-    sessionKey: 'JACKALOPES-DEFAULT'
+  // Store game settings globally
+  window.jackalopesGameSettings = {
+    serverUrl: options.serverUrl || 'ws://localhost:8082',
+    isFullscreen: options.fullscreen || false,
+    assetsUrl: options.assetsUrl || '',
+    containerId,
+    isWordPress: true
   };
   
-  // Merge options with WordPress settings
-  const serverUrl = options.server || wpSettings.serverUrl || 'ws://localhost:8082';
-  const isFullscreen = options.fullscreen || false;
-  const sessionKey = options.sessionKey || wpSettings.sessionKey || 'JACKALOPES-DEFAULT';
+  // Initialize UI containment to ensure elements stay in container
+  uiContainer.initUiContainment(containerId);
   
-  // Store sessionKey in localStorage for cross-browser communication
-  localStorage.setItem('jackalopes_session_key', sessionKey);
+  // Set up the contained UI
+  uiObserver = setupContainedUI(containerId);
   
-  // Remove loading UI
-  const loadingElement = container.querySelector('.jackalopes-loading');
-  if (loadingElement) {
-    loadingElement.remove();
-  }
+  // The rest of your initialization code here...
+  console.log('Game initialized with contained UI');
   
-  // Create React root and render the full game
-  const root = ReactDOM.createRoot(container);
-  root.render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  );
+  // Make sure the container has the right classes
+  container.classList.add('jackalopes-game-container');
   
-  // Set fullscreen mode if requested
-  if (isFullscreen) {
-    container.style.width = '100vw';
-    container.style.height = '100vh';
-    container.style.position = 'fixed';
-    container.style.top = '0';
-    container.style.left = '0';
-    container.style.zIndex = '9999';
-  }
-  
-  console.log(`Jackalopes game initialized in container "${containerId}"`);
-  console.log(`Server URL: ${serverUrl}`);
-  console.log(`Session Key: ${sessionKey}`);
+  // Additional cleanup on unload
+  window.addEventListener('beforeunload', () => {
+    if (uiObserver) {
+      uiObserver.disconnect();
+      uiObserver = null;
+    }
+  });
 };
-
-// Expose the initialization function globally
-window.initJackalopesGame = initJackalopesGame;
 
 // If not in a WordPress environment (standalone development), initialize immediately
 if (!window.jackalopesGameSettings && process.env.NODE_ENV === 'development') {

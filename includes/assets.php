@@ -50,57 +50,22 @@ function jackalopes_wp_register_assets() {
             'serverUrl' => jackalopes_wp_get_server_url(),
             'debug' => WP_DEBUG,
             'nonce' => wp_create_nonce('jackalopes_game_nonce'),
-            'skipThreeJSLoading' => false, // Default to loading ThreeJS
         ]
     );
 }
 
 /**
  * Enqueue game-specific assets.
- * 
- * @param bool $skip_threejs Optional. Whether to skip loading ThreeJS. Default false.
  */
-function jackalopes_wp_enqueue_game_assets($skip_threejs = false) {
+function jackalopes_wp_enqueue_game_assets() {
     // Enqueue main game styles
     wp_enqueue_style('jackalopes-game-styles');
     
     // Enqueue main game script
     wp_enqueue_script('jackalopes-game');
     
-    // Update the script settings to indicate whether to skip ThreeJS loading
-    wp_add_inline_script('jackalopes-game', 'window.jackalopesGameSettings.skipThreeJSLoading = ' . ($skip_threejs ? 'true' : 'false') . ';', 'before');
-    
-    // Add checks for ThreeJS instances
-    wp_add_inline_script('jackalopes-game', '
-        // Check for existing ThreeJS instances
-        (function() {
-            // Function to check if ThreeJS is already loaded
-            function isThreeJSLoaded() {
-                return (
-                    typeof THREE !== "undefined" || 
-                    typeof window.THREE !== "undefined" ||
-                    document.querySelector("script[src*=\'three.module.js\']") !== null
-                );
-            }
-            
-            // Log initial state
-            console.log("ThreeJS preload check:", isThreeJSLoaded() ? "Already loaded" : "Not loaded");
-            
-            // Store the state for the main script
-            window.jackalopesGameSettings.threeJSAlreadyLoaded = isThreeJSLoaded();
-            
-            // Allow detection of multiple ThreeJS loads
-            window.addEventListener("DOMContentLoaded", function() {
-                setTimeout(function() {
-                    const threeJSScripts = document.querySelectorAll("script[src*=\'three.module.js\']");
-                    if (threeJSScripts.length > 1) {
-                        console.warn("WARNING: Multiple ThreeJS instances detected. This can cause performance issues.");
-                        console.log("ThreeJS scripts found:", threeJSScripts.length);
-                    }
-                }, 1000);
-            });
-        })();
-    ', 'before');
+    // Enqueue any additional dependencies
+    // wp_enqueue_script('three-js');
 }
 
 /**
