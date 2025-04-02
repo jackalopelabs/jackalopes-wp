@@ -6,6 +6,15 @@
 document.addEventListener('DOMContentLoaded', function() {
   console.log('WordPress helper script loaded');
   
+  // Ensure React is defined on window
+  if (typeof React !== 'undefined' && !window.React) {
+    window.React = React;
+  }
+  
+  if (typeof ReactDOM !== 'undefined' && !window.ReactDOM) {
+    window.ReactDOM = ReactDOM;
+  }
+  
   // Make sure React and ReactDOM are available before proceeding
   if (checkReactAvailability()) {
     initializeGame();
@@ -44,7 +53,19 @@ function checkReactAndInitialize(retryCount = 0) {
 
 // Check if React and ReactDOM are available
 function checkReactAvailability() {
-  return typeof React !== 'undefined' && typeof ReactDOM !== 'undefined';
+  // Double check both global and window properties
+  const reactAvailable = typeof React !== 'undefined' || typeof window.React !== 'undefined';
+  const reactDOMAvailable = typeof ReactDOM !== 'undefined' || typeof window.ReactDOM !== 'undefined';
+  
+  if (reactAvailable && !window.React) {
+    window.React = React;
+  }
+  
+  if (reactDOMAvailable && !window.ReactDOM) {
+    window.ReactDOM = ReactDOM;
+  }
+  
+  return reactAvailable && reactDOMAvailable;
 }
 
 // Main initialization function

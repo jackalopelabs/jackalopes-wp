@@ -82,6 +82,14 @@ export default defineConfig({
 // Jackalopes WordPress Integration
 // Ensure the initialization function is properly exposed to the window object
 (function() {
+  // Make sure React is defined in the global scope
+  if (typeof React !== 'undefined' && !window.React) {
+    window.React = React;
+  }
+  if (typeof ReactDOM !== 'undefined' && !window.ReactDOM) {
+    window.ReactDOM = ReactDOM;
+  }
+
   ${mainBundle.code}
   // Explicitly make initJackalopesGame available on window
   if (typeof initJackalopesGame === 'function' && !window.initJackalopesGame) {
@@ -119,8 +127,8 @@ export default defineConfig({
           'react-dom/client': 'ReactDOM'
         }
       },
-      // External dependencies that should not be bundled
-      external: ['react', 'react-dom', 'react-dom/client']
+      // Remove React from external dependencies to bundle it
+      external: []
     },
     manifest: true,
     assetsInlineLimit: 0,

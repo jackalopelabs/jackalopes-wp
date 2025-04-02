@@ -39,6 +39,14 @@ function jackalopes_wp_register_assets() {
         false // Load in header
     );
     
+    // Add crossorigin attribute to React scripts
+    add_filter('script_loader_tag', function($tag, $handle) {
+        if (in_array($handle, ['react', 'react-dom'])) {
+            return str_replace('<script ', '<script crossorigin="anonymous" ', $tag);
+        }
+        return $tag;
+    }, 10, 2);
+    
     // Register WordPress helper script
     wp_register_script(
         'jackalopes-wp-helper',

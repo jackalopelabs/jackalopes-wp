@@ -17,10 +17,26 @@ import { JackalopesGameSettings, JackalopesGameOptions } from './types/wordpress
  * The game will be initialized when the WordPress shortcode is loaded.
  */
 
+// Extend the ReactDOM interface to include createRoot from react-dom/client
+declare global {
+  interface Window {
+    React: typeof React;
+    ReactDOM: typeof ReactDOM & {
+      createRoot?: typeof ReactDOMClient.createRoot;
+    };
+  }
+}
+
 // Explicitly ensure React is available in the global scope
 if (typeof window !== 'undefined') {
+  // Assign React to window IMMEDIATELY to ensure it's available
   window.React = React;
   window.ReactDOM = ReactDOM;
+  
+  // Also for ReactDOMClient
+  if (!window.ReactDOM.createRoot) {
+    window.ReactDOM.createRoot = ReactDOMClient.createRoot;
+  }
 }
 
 // Initialize WordPress integration

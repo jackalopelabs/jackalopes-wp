@@ -62,6 +62,7 @@ function jackalopes_wp_shortcode_callback($atts) {
                 script.id = id;
                 script.src = src;
                 script.async = false;
+                script.crossOrigin = "anonymous";
                 
                 if (callback) {
                     script.onload = callback;
@@ -75,7 +76,12 @@ function jackalopes_wp_shortcode_callback($atts) {
                 console.log('React not loaded, loading from CDN...');
                 loadScript('https://unpkg.com/react@18/umd/react.production.min.js', 'react-fallback', function() {
                     // After React loads, load ReactDOM
-                    loadScript('https://unpkg.com/react-dom@18/umd/react-dom.production.min.js', 'react-dom-fallback');
+                    loadScript('https://unpkg.com/react-dom@18/umd/react-dom.production.min.js', 'react-dom-fallback', function() {
+                        // Define global window.React and window.ReactDOM explicitly
+                        window.React = React;
+                        window.ReactDOM = ReactDOM;
+                        console.log('React and ReactDOM loaded and assigned to window object');
+                    });
                 });
             }
         })();
