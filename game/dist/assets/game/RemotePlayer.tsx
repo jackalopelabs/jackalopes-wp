@@ -173,6 +173,9 @@ export const RemotePlayer: React.FC<RemotePlayerProps> = ({
   const lastPosition = useRef<THREE.Vector3 | null>(null);
   const lastMoveTimestamp = useRef<number>(Date.now());
   const currentAnimation = useRef("idle"); // Default to idle
+  // Add refs for HTML components
+  const htmlNameTagRef = useRef<any>(null);
+  const htmlJackalopeTagRef = useRef<any>(null);
   
   // Add ref to track when to log flashlight debug info
   const lastFlashlightLogTime = useRef<number>(0);
@@ -671,7 +674,14 @@ export const RemotePlayer: React.FC<RemotePlayerProps> = ({
           )}
         </RigidBody>
         {/* Player ID tag - positioned higher for the taller merc model */}
-        <Html position={[position?.x || 0, (position?.y || 0) + 12, position?.z || 0]} center>
+        <Html 
+          ref={htmlNameTagRef}
+          position={[position?.x || 0, (position?.y || 0) + 12, position?.z || 0]} 
+          center
+          key={`nametag-${playerId}`}
+          prepend
+          zIndexRange={[0, 0]}
+        >
           {/* Only show nametag if this player is on the same team as the local player */}
           {window.jackalopesGame?.playerType === 'merc' && (
             <div style={{ 
@@ -1089,7 +1099,14 @@ export const RemotePlayer: React.FC<RemotePlayerProps> = ({
         
         {/* Player ID tag - only show when not hit/respawning */}
         {!isHit && !isRespawning && (
-          <Html position={[position?.x || 0, (position?.y || 0) + 5, position?.z || 0]} center>
+          <Html 
+            ref={htmlJackalopeTagRef}
+            position={[position?.x || 0, (position?.y || 0) + 5, position?.z || 0]} 
+            center
+            key={`jackalope-tag-${playerId}`}
+            prepend
+            zIndexRange={[0, 0]}
+          >
             {/* Only show nametag if this player is on the same team as the local player */}
             {window.jackalopesGame?.playerType === 'jackalope' && (
               <div style={{ 
@@ -1148,6 +1165,16 @@ export const RemotePlayer: React.FC<RemotePlayerProps> = ({
       console.log(`RemotePlayer ${playerId} unmounting`);
     };
   }, [playerId, playerType]);
+
+  // After other useEffect blocks:
+  // Add effect to handle proper cleanup of HTML elements
+  useEffect(() => {
+    return () => {
+      // Clear any HTML references on unmount to prevent DOM node issues
+      htmlNameTagRef.current = null;
+      htmlJackalopeTagRef.current = null;
+    };
+  }, []);
 
   return (
     <group 
