@@ -20,36 +20,65 @@ export const getAssetPath = (path: string): string => {
     console.log(`[ASSET] Original path: ${path}`);
   }
   
-  // If running in WordPress, use the assets URL from WordPress settings
-  if (window.jackalopesGameSettings?.assetsUrl) {
-    // Handle WordPress mode
-    const wpUrl = window.jackalopesGameSettings.assetsUrl;
-    
-    // Fix double "assets" in the path
-    let finalPath = cleanPath;
-    if (finalPath.startsWith('assets/') && wpUrl.includes('/assets/')) {
-      finalPath = finalPath.substring(7); // Remove the leading "assets/"
-    }
-
-    // Ensure proper URL protocol to avoid mixed content errors
-    let fullPath = `${wpUrl}${finalPath}`;
-    
-    // If we're on HTTPS but the URL is HTTP, try to upgrade to HTTPS
-    if (window.location.protocol === 'https:' && fullPath.startsWith('http:')) {
-      // Only change the protocol if it's not pointing to localhost or IP addresses
-      const url = new URL(fullPath);
-      const isLocalhost = url.hostname === 'localhost' || url.hostname === '[::1]';
-      const isIpAddress = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(url.hostname);
-      
-      if (!isLocalhost && !isIpAddress) {
-        fullPath = fullPath.replace('http:', 'https:');
+  // Critical fix for WordPress plugin paths
+  // Check if we're loading from a WordPress plugins directory
+  const inWordPress = window.location.href.includes('/wp-content/plugins/') || 
+                     document.querySelector('body.wordpress') !== null ||
+                     (typeof window.jackalopesGameSettings !== 'undefined');
+  
+  // If in WordPress, use the plugin URL as base
+  if (inWordPress) {
+    // Try to extract the plugin URL from the script tag
+    let pluginUrl = '';
+    const scriptTags = document.querySelectorAll('script');
+    for (let i = 0; i < scriptTags.length; i++) {
+      const src = scriptTags[i].getAttribute('src') || '';
+      if (src.includes('/jackalopes-wp/') && src.includes('/assets/')) {
+        pluginUrl = src.substring(0, src.lastIndexOf('/assets/') + 1);
+        break;
       }
     }
     
-    if (isDev) {
-      console.log(`[ASSET] WordPress path resolved: ${fullPath}`);
+    // If we couldn't find it through script tags, try WordPress settings
+    if (!pluginUrl && window.jackalopesGameSettings?.assetsUrl) {
+      pluginUrl = window.jackalopesGameSettings.assetsUrl;
     }
-    return fullPath;
+    
+    // If we have a WordPress plugin URL, use it
+    if (pluginUrl) {
+      // Fix double "assets" in the path
+      let finalPath = cleanPath;
+      if (finalPath.startsWith('assets/') && pluginUrl.includes('/assets/')) {
+        finalPath = finalPath.substring(7); // Remove the leading "assets/"
+      }
+
+      // Ensure proper URL protocol to avoid mixed content errors
+      let fullPath = `${pluginUrl}${finalPath}`;
+
+      // If we're on HTTPS but the URL is HTTP, try to upgrade to HTTPS
+      if (window.location.protocol === 'https:' && fullPath.startsWith('http:')) {
+        // Only change the protocol if it's not pointing to localhost or IP addresses
+        const url = new URL(fullPath);
+        const isLocalhost = url.hostname === 'localhost' || url.hostname === '[::1]';
+        const isIpAddress = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(url.hostname);
+        
+        if (!isLocalhost && !isIpAddress) {
+          fullPath = fullPath.replace('http:', 'https:');
+        }
+      }
+      
+      // Block any localhost references when in production
+      if (fullPath.includes('localhost:') || fullPath.includes('[::1]')) {
+        console.warn(`[ASSET] Blocked localhost reference in production: ${fullPath}`);
+        // Use a relative path instead
+        fullPath = `./${cleanPath.startsWith('assets/') ? cleanPath : `assets/${cleanPath}`}`;
+      }
+      
+      if (isDev) {
+        console.log(`[ASSET] WordPress path resolved: ${fullPath}`);
+      }
+      return fullPath;
+    }
   }
   
   // Check if we're running in a production build vs development

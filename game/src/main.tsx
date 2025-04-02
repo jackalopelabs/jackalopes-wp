@@ -8,6 +8,60 @@ import uiContainer from './utils/ui-container';
 // Import types from shared file
 import { JackalopesGameSettings, JackalopesGameOptions } from './types/wordpress';
 
+// Block any attempts to load resources from development server in production
+(function blockLocalDevServer() {
+  // Only apply this in production environments
+  const isProduction = window.location.protocol === 'https:' || 
+                       window.location.hostname !== 'localhost';
+  
+  if (isProduction) {
+    // Create a list of blocked domains/patterns
+    const blockedPatterns = [
+      'localhost:5173',
+      'localhost:3000',
+      '[::1]:5173',
+      '[::1]:3000',
+      '@vite/client'
+    ];
+    
+    // Prevent loading resources from localhost in production
+    const originalCreateElement = document.createElement.bind(document);
+    document.createElement = function(tagName: string, options?: ElementCreationOptions): HTMLElement {
+      const element = originalCreateElement(tagName, options);
+      
+      if (tagName.toLowerCase() === 'script' || tagName.toLowerCase() === 'link' || tagName.toLowerCase() === 'img') {
+        const originalSetAttribute = element.setAttribute.bind(element);
+        element.setAttribute = function(name: string, value: string): void {
+          // If it's a src or href attribute, check against blocked patterns
+          if ((name === 'src' || name === 'href') && typeof value === 'string') {
+            const isBlocked = blockedPatterns.some(pattern => value.includes(pattern));
+            if (isBlocked) {
+              console.warn(`Blocked resource from development server: ${value}`);
+              return; // Don't set the attribute
+            }
+          }
+          originalSetAttribute(name, value);
+        };
+      }
+      
+      return element;
+    };
+    
+    // Also block existing elements with dev server URLs
+    setTimeout(() => {
+      const allElements = document.querySelectorAll('script[src], link[href], img[src]');
+      allElements.forEach(element => {
+        const url = element.getAttribute('src') || element.getAttribute('href') || '';
+        const isBlocked = blockedPatterns.some(pattern => url.includes(pattern));
+        if (isBlocked) {
+          console.warn(`Removing existing dev server resource: ${url}`);
+          element.remove();
+        }
+      });
+    }, 0);
+  }
+})();
+
 // Add error handlers for resource loading to prevent CORS errors from breaking the app
 // This helps with issues on production sites trying to load local development resources
 (function setupErrorHandlers() {
