@@ -143,16 +143,20 @@ export const AudioToggleButton: React.FC<AudioToggleButtonProps> = ({
   );
   
   return (
-    <div style={{
-      position: 'fixed',
-      ...getPositionStyle(),
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '8px',
-      zIndex: 1000
-    }}>
+    <div 
+      className="jackalopes-audio-button-container"
+      style={{
+        position: 'absolute',
+        ...getPositionStyle(),
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        zIndex: 1000,
+        pointerEvents: 'auto'
+      }}>
       {/* Simplified audio toggle button with SVG icons */}
       <button 
+        className="jackalopes-audio-button"
         onClick={toggleAudio}
         style={{
           width: '50px',

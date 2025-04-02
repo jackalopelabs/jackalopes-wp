@@ -105,7 +105,10 @@ function ensureElementsInContainer(container: HTMLElement): void {
     '.jackalopes-wordpress-notice',
     '.loading-screen',
     '.control-panel',
-    '.game-ui-element'
+    '.game-ui-element',
+    '.jackalopes-audio-button-container',
+    '.jackalopes-audio-wrapper',
+    '.jackalopes-audio-mobile-wrapper'
   ];
   
   // Find elements

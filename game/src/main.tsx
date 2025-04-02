@@ -35,7 +35,8 @@ function setupContainedUI(containerId: string) {
     // Look for UI elements that might be using fixed positioning
     const fixedElements = document.querySelectorAll(
       '.fps-stats, .virtual-gamepad, .game-controls, .jackalopes-ui, .jackalopes-status, ' +
-      '.jackalopes-help, .loading-screen, .jackalopes-wordpress-notice'
+      '.jackalopes-help, .loading-screen, .jackalopes-wordpress-notice, ' +
+      '.jackalopes-audio-button-container, .jackalopes-audio-wrapper, .jackalopes-audio-mobile-wrapper'
     );
     
     // Move any elements outside the container into the container

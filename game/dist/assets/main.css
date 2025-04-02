@@ -104,6 +104,23 @@
   right: 10px !important;
 }
 
+/* Specific rules for the audio button */
+.jackalopes-game-container .jackalopes-audio-button-container {
+  position: absolute !important;
+  z-index: 1000 !important;
+}
+
+.jackalopes-game-container .jackalopes-audio-wrapper {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Fix for buttons in audio container to ensure they work */
+.jackalopes-game-container .jackalopes-audio-button {
+  pointer-events: auto !important;
+}
+
 /* Hide UI elements that should not be visible in WordPress mode */
 .jackalopes-game-container .wp-hidden {
   display: none !important;
