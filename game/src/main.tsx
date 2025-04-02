@@ -227,6 +227,13 @@ function initJackalopesGame(containerId: string, options: JackalopesGameOptions 
   let defaultServerUrl = isSecureSite 
     ? 'wss://' + window.location.host + '/websocket/' 
     : 'ws://' + window.location.host + '/websocket/';
+    
+  // Check if we're on staging or production Bonsai domain
+  const hostname = window.location.hostname;
+  if (hostname.includes('staging.games.bonsai.so') || hostname.includes('bonsai.so')) {
+    defaultServerUrl = `wss://${hostname}/websocket/`;
+    console.log(`Using Bonsai staging WebSocket server: ${defaultServerUrl}`);
+  }
   
   // Configure game to operate in standalone mode if no server is available
   const serverModeEnabled = options.enableServer !== false;

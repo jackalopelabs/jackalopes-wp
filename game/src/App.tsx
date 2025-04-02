@@ -1350,8 +1350,29 @@ export function App() {
         };
     }, []);
     
-    // Create a shared ConnectionManager instance with the development server URL
-    const [connectionManager] = useState(() => new ConnectionManager('ws://localhost:8082'));
+    // Create a shared ConnectionManager instance with the staging server URL instead of localhost
+    const [connectionManager] = useState(() => {
+        // Get current hostname to determine correct server URL
+        const hostname = window.location.hostname;
+        let serverUrl = '';
+        
+        // Check if we're on staging or production
+        if (hostname.includes('staging.games.bonsai.so') || hostname.includes('bonsai.so')) {
+            serverUrl = `wss://${hostname}/websocket/`;
+        } else if (hostname === 'localhost' || hostname.includes('bonsai.test')) {
+            // For local development environments
+            serverUrl = window.location.protocol === 'https:' 
+                ? `wss://${hostname}/websocket/`
+                : `ws://${hostname}/websocket/`;
+        } else {
+            // Fallback to relative path (will use same domain as current page)
+            serverUrl = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+            serverUrl += window.location.host + '/websocket/';
+        }
+        
+        console.log(`Connecting to WebSocket server at: ${serverUrl}`);
+        return new ConnectionManager(serverUrl);
+    });
     // Add state to track if we're in offline mode
     const [isOfflineMode, setIsOfflineMode] = useState(false);
     // Track if notification is visible
