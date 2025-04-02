@@ -2,11 +2,24 @@
  * WordPress.js - Helper script for initializing the Jackalopes game in WordPress
  */
 
+// Define React version for consistency
+const REACT_VERSION = '18.2.0';
+
 // Initialize once the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
   console.log('WordPress helper script loaded');
   
-  // Ensure React is defined on window
+  // Check if there are already multiple versions of React
+  if (window._REACT_LOADED && typeof React !== 'undefined' && window.React !== React) {
+    console.warn('Multiple React instances detected - fixing...');
+    // Ensure we only use one copy of React
+    window.React = React;
+  }
+  
+  // Flag that we've loaded React
+  window._REACT_LOADED = true;
+  
+  // Explicitly ensure React is defined on window
   if (typeof React !== 'undefined' && !window.React) {
     window.React = React;
   }
@@ -15,13 +28,19 @@ document.addEventListener('DOMContentLoaded', function() {
     window.ReactDOM = ReactDOM;
   }
   
-  // Make sure React and ReactDOM are available before proceeding
-  if (checkReactAvailability()) {
-    initializeGame();
+  // Load React if not available
+  if (!checkReactAvailability()) {
+    console.log('React not detected, loading React libraries...');
+    loadReactLibraries().then(() => {
+      console.log('React libraries loaded successfully');
+      initializeGame();
+    }).catch(error => {
+      console.error('Failed to load React:', error);
+      showError('Failed to load React libraries. Please refresh the page.');
+    });
   } else {
-    console.log('Waiting for React to load before initializing game...');
-    // Check again in 500ms
-    setTimeout(checkReactAndInitialize, 500);
+    console.log('React is already available');
+    initializeGame();
   }
   
   // Add retry button functionality
@@ -34,6 +53,50 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+
+// Load React libraries from CDN
+function loadReactLibraries() {
+  return new Promise((resolve, reject) => {
+    loadScript(`https://unpkg.com/react@${REACT_VERSION}/umd/react.production.min.js`, 'react-script')
+      .then(() => {
+        return loadScript(`https://unpkg.com/react-dom@${REACT_VERSION}/umd/react-dom.production.min.js`, 'react-dom-script');
+      })
+      .then(() => {
+        // Make sure React is available on window
+        if (typeof React !== 'undefined') {
+          window.React = React;
+        }
+        if (typeof ReactDOM !== 'undefined') {
+          window.ReactDOM = ReactDOM;
+        }
+        resolve();
+      })
+      .catch(error => {
+        reject(error);
+      });
+  });
+}
+
+// Helper function to load a script
+function loadScript(src, id) {
+  return new Promise((resolve, reject) => {
+    if (document.getElementById(id)) {
+      resolve();
+      return;
+    }
+    
+    const script = document.createElement('script');
+    script.id = id;
+    script.src = src;
+    script.crossOrigin = 'anonymous';
+    script.async = false;
+    
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+    
+    document.head.appendChild(script);
+  });
+}
 
 // Check for React availability and initialize when available
 function checkReactAndInitialize(retryCount = 0) {
@@ -63,6 +126,15 @@ function checkReactAvailability() {
   
   if (reactDOMAvailable && !window.ReactDOM) {
     window.ReactDOM = ReactDOM;
+  }
+  
+  // Check if React hooks are working properly
+  if (reactAvailable && reactDOMAvailable) {
+    if (typeof window.React.useState !== 'function' || 
+        typeof window.React.useEffect !== 'function') {
+      console.warn('React hooks not available, possible version mismatch');
+      return false;
+    }
   }
   
   return reactAvailable && reactDOMAvailable;

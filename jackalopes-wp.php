@@ -72,6 +72,29 @@ function jackalopes_wp_init() {
     if (is_admin()) {
         require_once JACKALOPES_WP_PLUGIN_DIR . 'admin/admin.php';
     }
+    
+    // Fix CSS MIME type issues
+    add_action('init', 'jackalopes_wp_fix_css_mime_type');
+}
+
+/**
+ * Fix CSS MIME type issues to prevent WordPress from serving CSS as text/html
+ */
+function jackalopes_wp_fix_css_mime_type() {
+    // Add CSS MIME type
+    add_filter('wp_check_filetype_and_ext', function($types, $file, $filename, $mimes) {
+        if (strpos($filename, '.css') !== false) {
+            $types['type'] = 'text/css';
+            $types['ext'] = 'css';
+        }
+        return $types;
+    }, 10, 4);
+    
+    // Also add the MIME type directly to WordPress
+    add_filter('mime_types', function($mimes) {
+        $mimes['css'] = 'text/css';
+        return $mimes;
+    });
 }
 
 // Initialize the plugin

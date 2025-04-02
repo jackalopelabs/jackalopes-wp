@@ -50,6 +50,17 @@ function jackalopes_wp_shortcode_callback($atts) {
     ?>
     <div class="jackalopes-game-container <?php echo esc_attr($attributes['class']); ?>" style="<?php echo $custom_css; ?>">
         <script>
+        // Setup React safety checks to prevent multiple versions
+        window._REACT_VERSION = '18.2.0';
+        
+        // Remove any existing React if it's the wrong version
+        if (typeof React !== 'undefined') {
+            if (React.version !== window._REACT_VERSION) {
+                console.warn('Detected mismatched React version:', React.version, 'vs needed:', window._REACT_VERSION);
+                // Don't remove, just note the issue
+            }
+        }
+        
         // Check if React is already loaded, if not, load it
         (function() {
             function loadScript(src, id, callback) {
@@ -74,15 +85,24 @@ function jackalopes_wp_shortcode_callback($atts) {
             // Check if React is already loaded
             if (typeof React === 'undefined') {
                 console.log('React not loaded, loading from CDN...');
-                loadScript('https://unpkg.com/react@18/umd/react.production.min.js', 'react-fallback', function() {
+                loadScript('https://unpkg.com/react@18.2.0/umd/react.production.min.js', 'react-fallback', function() {
                     // After React loads, load ReactDOM
-                    loadScript('https://unpkg.com/react-dom@18/umd/react-dom.production.min.js', 'react-dom-fallback', function() {
+                    loadScript('https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js', 'react-dom-fallback', function() {
                         // Define global window.React and window.ReactDOM explicitly
                         window.React = React;
                         window.ReactDOM = ReactDOM;
                         console.log('React and ReactDOM loaded and assigned to window object');
+                        
+                        // Verify React hooks are available
+                        if (typeof React.useState !== 'function' || typeof React.useEffect !== 'function') {
+                            console.error('React hooks not available after loading React');
+                        } else {
+                            console.log('React hooks verified as available');
+                        }
                     });
                 });
+            } else {
+                console.log('React already loaded, version:', React.version);
             }
         })();
         

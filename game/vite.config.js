@@ -99,10 +99,18 @@ export default defineConfig({
 })();
 `;
         }
+        
+        // Ensure CSS has the right MIME type
+        const cssBundle = bundle['assets/main.css'];
+        if (cssBundle) {
+          // Add a CSS MIME type comment
+          cssBundle.source = `/* MIME Type: text/css */\n${cssBundle.source}`;
+        }
       }
     }
   ],
   optimizeDeps: {
+    include: ['react', 'react-dom', 'react-dom/client'],
     exclude: ['lucide-react'],
   },
   base: './',
@@ -127,21 +135,43 @@ export default defineConfig({
           'react-dom/client': 'ReactDOM'
         }
       },
-      // Remove React from external dependencies to bundle it
+      // Include React in the bundle to avoid version conflicts
       external: []
     },
     manifest: true,
     assetsInlineLimit: 0,
+  },
+  // Ensure CSS MIME type is set correctly
+  css: {
+    postcss: {
+      plugins: [
+        {
+          postcssPlugin: 'internal:charset-removal',
+          AtRule: {
+            charset: (atRule) => {
+              if (atRule.name === 'charset') {
+                atRule.remove();
+              }
+            }
+          }
+        }
+      ]
+    }
   },
   publicDir: 'public',
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
     'process.env.VITE_APP_TITLE': JSON.stringify('Jackalopes'),
     'process.env.VITE_DEBUG': JSON.stringify(process.env.VITE_DEBUG || 'false'),
+    // Explicitly define React versions to avoid conflicts
+    '__REACT_VERSION__': JSON.stringify('18.2.0'),
+    '__REACT_DOM_VERSION__': JSON.stringify('18.2.0')
   },
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
+      'react': resolve(__dirname, 'node_modules/react'),
+      'react-dom': resolve(__dirname, 'node_modules/react-dom')
     },
   },
   server: {

@@ -19,13 +19,21 @@ function jackalopes_wp_register_assets() {
         'jackalopes-game-styles',
         JACKALOPES_WP_PLUGIN_URL . 'game/dist/assets/main.css',
         [],
-        JACKALOPES_WP_VERSION
+        JACKALOPES_WP_VERSION . '.' . time() // Add timestamp to prevent caching
     );
     
-    // Register React and ReactDOM
+    // Add correct content type header for CSS
+    add_filter('style_loader_tag', function($tag, $handle) {
+        if ('jackalopes-game-styles' === $handle) {
+            return str_replace('<link ', '<link type="text/css" ', $tag);
+        }
+        return $tag;
+    }, 10, 2);
+    
+    // Register React and ReactDOM - use exact version that matches the bundle
     wp_register_script(
         'react',
-        'https://unpkg.com/react@18/umd/react.production.min.js',
+        'https://unpkg.com/react@18.2.0/umd/react.production.min.js',
         [],
         '18.2.0',
         false // Load in header
@@ -33,7 +41,7 @@ function jackalopes_wp_register_assets() {
     
     wp_register_script(
         'react-dom',
-        'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
+        'https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js',
         ['react'],
         '18.2.0',
         false // Load in header
@@ -290,6 +298,9 @@ function jackalopes_wp_handle_asset_requests() {
                 case 'jpeg':
                     header('Content-Type: image/jpeg');
                     break;
+                case 'css':
+                    header('Content-Type: text/css');
+                    break;
                 default:
                     header('Content-Type: application/octet-stream');
             }
@@ -300,4 +311,33 @@ function jackalopes_wp_handle_asset_requests() {
         }
     }
 }
-add_action('parse_request', 'jackalopes_wp_handle_asset_requests'); 
+add_action('parse_request', 'jackalopes_wp_handle_asset_requests');
+
+/**
+ * Direct handler for CSS files - ensure they're served with the correct MIME type
+ */
+function jackalopes_wp_handle_css_files() {
+    // Check if the request is for a CSS file in our plugin
+    $request_uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+    
+    if (strpos($request_uri, '/plugins/jackalopes-wp/') !== false && 
+        strpos($request_uri, '.css') !== false) {
+        
+        // Extract the path to the CSS file
+        $plugin_dir_uri = plugin_dir_url(__FILE__);
+        $plugin_dir_path = plugin_dir_path(__FILE__);
+        $base_path = str_replace('includes/', '', $plugin_dir_path);
+        
+        // Try to determine the file path
+        $file_path = $base_path . str_replace('/plugins/jackalopes-wp/', '', $request_uri);
+        $file_path = realpath($file_path);
+        
+        // Only serve CSS files
+        if ($file_path && file_exists($file_path) && pathinfo($file_path, PATHINFO_EXTENSION) === 'css') {
+            header('Content-Type: text/css');
+            readfile($file_path);
+            exit;
+        }
+    }
+}
+add_action('init', 'jackalopes_wp_handle_css_files', 999); 
