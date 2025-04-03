@@ -56,49 +56,6 @@ function jackalopes_wp_game_shortcode($atts = []) {
          data-disable-ui="<?php echo esc_attr($atts['disable_ui']); ?>"
          data-disable-threejs="<?php echo esc_attr($atts['disable_threejs']); ?>"
          style="width: <?php echo esc_attr($atts['width']); ?>; height: <?php echo esc_attr($atts['height']); ?>; position: relative; overflow: hidden;">
-        
-        <!-- Start Game button - initially visible -->
-        <div class="start-game-overlay">
-            <button class="start-game-button">Start Game</button>
-        </div>
-        
-        <style>
-            /* Inline critical CSS to ensure proper positioning */
-            #<?php echo esc_attr($game_id); ?> {
-                position: relative !important;
-                overflow: hidden !important;
-                background-color: #242424;
-            }
-            #<?php echo esc_attr($game_id); ?> .start-game-overlay {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                background-color: rgba(0, 0, 0, 0.7);
-                z-index: 150;
-            }
-            #<?php echo esc_attr($game_id); ?> .start-game-button {
-                background-color: #4CAF50;
-                color: white;
-                padding: 16px 32px;
-                border: none;
-                border-radius: 8px;
-                font-size: 24px;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                font-weight: bold;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            }
-            #<?php echo esc_attr($game_id); ?> .start-game-button:hover {
-                background-color: #45a049;
-                transform: scale(1.05);
-                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
-            }
-        </style>
     </div>
     <script>
         // Wait for the module to be fully loaded
