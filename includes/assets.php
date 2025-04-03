@@ -22,20 +22,45 @@ function jackalopes_wp_register_assets() {
         JACKALOPES_WP_VERSION
     );
     
-    // Register main game script
+    // Register main game script with error handling
     wp_register_script(
         'jackalopes-game',
         JACKALOPES_WP_PLUGIN_URL . 'game/dist/assets/main.js',
         [],
-        JACKALOPES_WP_VERSION,
+        JACKALOPES_WP_VERSION . '.' . time(), // Add timestamp for cache busting during development
         true
     );
     
-    // Add script attributes for module type
+    // Register a backup fallback script in case the module script fails
+    wp_register_script(
+        'jackalopes-game-fallback',
+        JACKALOPES_WP_PLUGIN_URL . 'game/dist/assets/main.js',
+        [],
+        JACKALOPES_WP_VERSION . '.' . time(), // Add timestamp for cache busting
+        true
+    );
+    
+    // Add script attributes for module type and error handling
     add_filter('script_loader_tag', function($tag, $handle) {
         if ('jackalopes-game' === $handle) {
-            return str_replace('<script ', '<script type="module" ', $tag);
+            // Add module type and onerror handler for the main script
+            $tag = str_replace(
+                '<script ',
+                '<script type="module" onerror="document.dispatchEvent(new CustomEvent(\'jackalopesScriptLoadError\'));" ',
+                $tag
+            );
+            return $tag;
         }
+        
+        if ('jackalopes-game-fallback' === $handle) {
+            // Add regular script tag for the fallback (not as module)
+            return str_replace(
+                '<script ',
+                '<script data-fallback="true" ',
+                $tag
+            );
+        }
+        
         return $tag;
     }, 10, 2);
     
@@ -64,8 +89,55 @@ function jackalopes_wp_enqueue_game_assets() {
     // Enqueue main game script
     wp_enqueue_script('jackalopes-game');
     
-    // Enqueue any additional dependencies
-    // wp_enqueue_script('three-js');
+    // Enqueue fallback script but set it to not load immediately
+    wp_enqueue_script('jackalopes-game-fallback');
+    
+    // Add inline script to handle fallback logic
+    wp_add_inline_script('jackalopes-game-fallback', '
+        // Define a function to activate the fallback script
+        function activateJackalopesFallback() {
+            console.warn("Activating Jackalopes fallback script mode");
+            
+            // Find the fallback script tag
+            var fallbackScript = document.querySelector("script[data-fallback=\'true\']");
+            
+            if (fallbackScript) {
+                // Clone the node to trigger reload
+                var newScript = document.createElement("script");
+                
+                // Copy all attributes except type="module"
+                for (var i = 0; i < fallbackScript.attributes.length; i++) {
+                    var attr = fallbackScript.attributes[i];
+                    if (attr.name !== "type" && attr.name !== "data-fallback") {
+                        newScript.setAttribute(attr.name, attr.value);
+                    }
+                }
+                
+                // Replace the fallback script with the new one
+                fallbackScript.parentNode.replaceChild(newScript, fallbackScript);
+                
+                console.log("Fallback script activated");
+                return true;
+            }
+            
+            console.error("Could not find fallback script");
+            return false;
+        }
+        
+        // Listen for module script load error
+        document.addEventListener("jackalopesScriptLoadError", function() {
+            console.error("Jackalopes module script failed to load, activating fallback");
+            activateJackalopesFallback();
+        });
+        
+        // Add a safety timeout - if game isn\'t initialized after 5 seconds, try fallback
+        setTimeout(function() {
+            if (typeof window.initJackalopesGame !== "function") {
+                console.warn("Jackalopes game not initialized after timeout, trying fallback");
+                activateJackalopesFallback();
+            }
+        }, 5000);
+    ', 'before');
 }
 
 /**

@@ -116,17 +116,98 @@ function jackalopes_wp_game_shortcode($atts = []) {
          data-disable-ui="<?php echo esc_attr($atts['disable_ui']); ?>"
          data-disable-threejs="<?php echo esc_attr($atts['disable_threejs']); ?>"
          style="width: <?php echo esc_attr($atts['width']); ?>; height: <?php echo esc_attr($atts['height']); ?>; position: relative; overflow: hidden;">
+        <!-- Loading indicator and fallback content -->
+        <div class="jackalopes-loading-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.8); color: white; z-index: 5;">
+            <h2 style="margin-bottom: 20px;">Loading Jackalopes Game</h2>
+            <div class="jackalopes-loading-spinner" style="width: 50px; height: 50px; border: 5px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top-color: white; animation: jackalopes-spin 1s ease-in-out infinite;"></div>
+            <p style="margin-top: 20px;">Please wait while the game loads...</p>
+            <p style="font-size: 12px; margin-top: 30px; opacity: 0.7;">If the game doesn't load within 10 seconds, try refreshing the page or using a different browser.</p>
+        </div>
+        
+        <style>
+            @keyframes jackalopes-spin {
+                to { transform: rotate(360deg); }
+            }
+        </style>
+        
+        <script>
+            // Remove loading screen once game is initialized
+            window.addEventListener('DOMContentLoaded', function() {
+                var removeLoadingTimeout = setTimeout(function() {
+                    var loadingContainer = document.querySelector('#<?php echo esc_js($game_id); ?> .jackalopes-loading-container');
+                    var canvasElement = document.querySelector('#<?php echo esc_js($game_id); ?> canvas');
+                    
+                    // Only remove if canvas exists
+                    if (loadingContainer && canvasElement) {
+                        loadingContainer.style.opacity = '0';
+                        loadingContainer.style.transition = 'opacity 0.5s ease-out';
+                        
+                        // Remove after fade out
+                        setTimeout(function() {
+                            loadingContainer.remove();
+                        }, 500);
+                    }
+                }, 2000); // Wait for 2 seconds after DOM content loaded
+                
+                // Force remove after 15 seconds regardless
+                setTimeout(function() {
+                    var loadingContainer = document.querySelector('#<?php echo esc_js($game_id); ?> .jackalopes-loading-container');
+                    if (loadingContainer) {
+                        loadingContainer.remove();
+                    }
+                }, 15000);
+            });
+        </script>
     </div>
     <script>
-        // Wait for the module to be fully loaded
-        setTimeout(function() {
+        // Add a variable to track initialization attempts
+        var jackalopesInitAttempts = 0;
+        var jackalopesInitSuccess = false;
+        var jackalopesMaxInitAttempts = 5;
+        
+        // Create a function to check if the scripts are loaded
+        function checkJackalopesScriptsLoaded() {
+            console.log('Checking if Jackalopes scripts are loaded...');
+            
+            // Check if the initJackalopesGame function exists
+            if (typeof window.initJackalopesGame === 'function') {
+                console.log('Jackalopes scripts loaded successfully!');
+                initializeJackalopesGame();
+                return true;
+            } else {
+                console.warn('Jackalopes scripts not loaded yet, attempt ' + (jackalopesInitAttempts + 1) + ' of ' + jackalopesMaxInitAttempts);
+                jackalopesInitAttempts++;
+                
+                if (jackalopesInitAttempts < jackalopesMaxInitAttempts) {
+                    // Try again in 500ms
+                    setTimeout(checkJackalopesScriptsLoaded, 500);
+                } else {
+                    // Maximum attempts reached, show error
+                    console.error('Failed to load Jackalopes scripts after multiple attempts');
+                    showJackalopesError('Failed to load game scripts. Please try refreshing the page.');
+                }
+                return false;
+            }
+        }
+        
+        // Create a function to handle initialization
+        function initializeJackalopesGame() {
             // Set flag to prevent auto-pointer lock
             window.jackalopesPreventAutoPointerLock = true;
             
-            // Initialize the game when the DOM is fully loaded
-            if (typeof window.initJackalopesGame === 'function') {
-                // Longer delay for initialization
-                setTimeout(function() {
+            var container = document.getElementById('<?php echo esc_js($game_id); ?>');
+            
+            // Make sure container exists
+            if (!container) {
+                console.error('Jackalopes game container not found');
+                return;
+            }
+            
+            console.log('Initializing Jackalopes game in container: <?php echo esc_js($game_id); ?>');
+            
+            // Longer delay for initialization
+            setTimeout(function() {
+                try {
                     window.initJackalopesGame('<?php echo esc_js($game_id); ?>', {
                         fullscreen: <?php echo $atts['fullscreen'] === 'true' ? 'true' : 'false'; ?>,
                         serverUrl: '<?php echo esc_js($atts['server']); ?>',
@@ -134,42 +215,62 @@ function jackalopes_wp_game_shortcode($atts = []) {
                         disableThreejs: <?php echo $atts['disable_threejs'] === 'true' ? 'true' : 'false'; ?>,
                         preventPointerLock: true
                     });
-                }, 300); // Increased to 300ms for better loading sequence
-                
-                // Add start game button functionality
-                var container = document.getElementById('<?php echo esc_js($game_id); ?>');
-                var startGameOverlay = container.querySelector('.start-game-overlay');
-                var startGameBtn = container.querySelector('.start-game-button');
-                
-                if (startGameBtn && startGameOverlay) {
-                    startGameBtn.addEventListener('click', function() {
-                        // Hide the overlay
-                        startGameOverlay.style.display = 'none';
-                        
-                        // Enable pointer lock by removing the prevention flag
-                        window.jackalopesPreventAutoPointerLock = false;
-                        
-                        // Request pointer lock to start the game
-                        try {
-                            container.requestPointerLock = container.requestPointerLock || 
-                                                          container.mozRequestPointerLock || 
-                                                          container.webkitRequestPointerLock;
-                            container.requestPointerLock();
-                            
-                            // Dispatch a custom event for the game to handle
-                            var event = new CustomEvent('jackalopesGameStarted');
-                            window.dispatchEvent(event);
-                        } catch(err) {
-                            console.error('Error requesting pointer lock:', err);
-                        }
-                    });
+                    jackalopesInitSuccess = true;
+                    console.log('Jackalopes game initialized successfully');
+                } catch (err) {
+                    console.error('Error initializing Jackalopes game:', err);
+                    showJackalopesError('Error initializing game: ' + err.message);
                 }
+            }, 300);
+            
+            // Add start game button functionality
+            var startGameOverlay = container.querySelector('.start-game-overlay');
+            var startGameBtn = container.querySelector('.start-game-button');
+            
+            if (startGameBtn && startGameOverlay) {
+                startGameBtn.addEventListener('click', function() {
+                    // Hide the overlay
+                    startGameOverlay.style.display = 'none';
+                    
+                    // Enable pointer lock by removing the prevention flag
+                    window.jackalopesPreventAutoPointerLock = false;
+                    
+                    // Request pointer lock to start the game
+                    try {
+                        var targetElement = container;
+                        
+                        // Try container first
+                        if (targetElement.requestPointerLock) {
+                            targetElement.requestPointerLock();
+                        }
+                        // Fallback to document if container fails
+                        else if (document.documentElement.requestPointerLock) {
+                            document.documentElement.requestPointerLock();
+                        }
+                        // Last resort: try body
+                        else if (document.body.requestPointerLock) {
+                            document.body.requestPointerLock();
+                        }
+                        else {
+                            console.warn('Pointer lock not supported on this device/browser');
+                        }
+                        
+                        // Dispatch a custom event for the game to handle
+                        var event = new CustomEvent('jackalopesGameStarted');
+                        window.dispatchEvent(event);
+                    } catch(err) {
+                        console.error('Error requesting pointer lock:', err);
+                    }
+                });
             }
             
-            // Make sure canvas is properly visible when it appears
-            setTimeout(function() {
-                var canvas = document.querySelector('#<?php echo esc_js($game_id); ?> canvas');
+            // Watch for canvas creation and ensure proper setup
+            var canvasCheckInterval = setInterval(function() {
+                var canvas = container.querySelector('canvas');
                 if (canvas) {
+                    clearInterval(canvasCheckInterval);
+                    console.log('Canvas found, ensuring proper setup...');
+                    
                     // Force canvas to be visible with explicit positioning
                     canvas.style.display = 'block';
                     canvas.style.width = '100%';
@@ -180,7 +281,7 @@ function jackalopes_wp_game_shortcode($atts = []) {
                     canvas.style.zIndex = '1'; // Lower z-index to ensure UI is on top
                     
                     // Remove any other canvases that might be duplicates
-                    var allCanvases = document.querySelectorAll('#<?php echo esc_js($game_id); ?> canvas');
+                    var allCanvases = container.querySelectorAll('canvas');
                     if (allCanvases.length > 1) {
                         console.log('Found multiple canvases - removing duplicates');
                         for (var i = 1; i < allCanvases.length; i++) {
@@ -204,19 +305,27 @@ function jackalopes_wp_game_shortcode($atts = []) {
                             }, 50);
                         }
                     }, 500);
-                } else {
-                    console.warn('Canvas not found after 2000ms - game may not be rendering properly.');
                 }
-            }, 2000); // Increased to 2000ms for slower devices
+            }, 200); // Check every 200ms
+            
+            // Set a timeout to clear the interval if no canvas is found after 10 seconds
+            setTimeout(function() {
+                if (canvasCheckInterval) {
+                    clearInterval(canvasCheckInterval);
+                    
+                    // If no canvas was found and init wasn't successful, show error
+                    var canvas = container.querySelector('canvas');
+                    if (!canvas && !jackalopesInitSuccess) {
+                        console.error('No canvas found after 10 seconds - game initialization likely failed');
+                        showJackalopesError('Game failed to initialize properly. Please try a different browser or device.');
+                    }
+                }
+            }, 10000);
             
             // Additional check to ensure UI elements remain visible
             setTimeout(function() {
                 // Ensure all UI elements have proper z-index
-                var uiElements = document.querySelectorAll('#<?php echo esc_js($game_id); ?> .fixed-ui, ' + 
-                                                         '#<?php echo esc_js($game_id); ?> .virtual-gamepad, ' +
-                                                         '#<?php echo esc_js($game_id); ?> .game-controls, ' +
-                                                         '#<?php echo esc_js($game_id); ?> .jackalopes-audio-button-container, ' +
-                                                         '#<?php echo esc_js($game_id); ?> .fullscreen-button');
+                var uiElements = container.querySelectorAll('.fixed-ui, .virtual-gamepad, .game-controls, .jackalopes-audio-button-container, .fullscreen-button');
                 
                 if (uiElements.length > 0) {
                     console.log('Found ' + uiElements.length + ' UI elements, ensuring proper visibility');
@@ -229,8 +338,59 @@ function jackalopes_wp_game_shortcode($atts = []) {
                 } else {
                     console.warn('No UI elements found after 4 seconds');
                 }
-            }, 4000); // Check after all other initialization
-        }, 200); // Increased initial delay to 200ms
+            }, 4000);
+        }
+        
+        // Function to show error message in the game container
+        function showJackalopesError(message) {
+            var container = document.getElementById('<?php echo esc_js($game_id); ?>');
+            if (!container) return;
+            
+            // Create error message element
+            var errorDiv = document.createElement('div');
+            errorDiv.className = 'jackalopes-error-message';
+            errorDiv.style.position = 'absolute';
+            errorDiv.style.top = '50%';
+            errorDiv.style.left = '50%';
+            errorDiv.style.transform = 'translate(-50%, -50%)';
+            errorDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            errorDiv.style.color = 'white';
+            errorDiv.style.padding = '20px';
+            errorDiv.style.borderRadius = '5px';
+            errorDiv.style.textAlign = 'center';
+            errorDiv.style.maxWidth = '80%';
+            errorDiv.style.zIndex = '1000';
+            errorDiv.innerHTML = '<h3 style="margin-top:0;">Jackalopes Game Error</h3><p>' + message + '</p>' +
+                                '<button id="jackalopes-retry-button" style="background:#4CAF50;border:none;color:white;padding:10px 15px;border-radius:4px;cursor:pointer;margin-top:10px;">Retry</button>';
+            
+            // Add to container
+            container.appendChild(errorDiv);
+            
+            // Add retry button handler
+            var retryButton = document.getElementById('jackalopes-retry-button');
+            if (retryButton) {
+                retryButton.addEventListener('click', function() {
+                    // Remove error message
+                    errorDiv.remove();
+                    // Reset variables
+                    jackalopesInitAttempts = 0;
+                    jackalopesInitSuccess = false;
+                    // Try again
+                    checkJackalopesScriptsLoaded();
+                });
+            }
+        }
+        
+        // Add a specific error handler for webGL context issues
+        window.addEventListener('webglcontextlost', function(e) {
+            console.error('WebGL context lost:', e);
+            showJackalopesError('WebGL context lost. This may be due to limited graphics memory or browser restrictions.');
+        }, false);
+        
+        // Start the initialization sequence
+        setTimeout(function() {
+            checkJackalopesScriptsLoaded();
+        }, 200);
     </script>
     <?php
     

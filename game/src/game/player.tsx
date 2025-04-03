@@ -1007,6 +1007,43 @@ export const Player = forwardRef<EntityType, PlayerProps>(({ onMove, walkSpeed =
         isRunning
     };
 
+    // Add this helper function near the top of the component
+    const requestPointerLockWithFallback = () => {
+        try {
+            // Get the container element
+            const container = document.querySelector('.jackalopes-game-container');
+            
+            if (!container) {
+                console.warn('Game container not found for pointer lock');
+                return;
+            }
+
+            // Check if pointer lock is prevented
+            if (window.jackalopesPreventAutoPointerLock) {
+                console.log('Pointer lock prevented by game settings');
+                return;
+            }
+
+            // Try container first
+            if (container.requestPointerLock) {
+                container.requestPointerLock();
+            }
+            // Fallback to document if container fails
+            else if (document.documentElement.requestPointerLock) {
+                document.documentElement.requestPointerLock();
+            }
+            // Last resort: try body
+            else if (document.body.requestPointerLock) {
+                document.body.requestPointerLock();
+            }
+            else {
+                console.warn('Pointer lock not supported on this device/browser');
+            }
+        } catch (err) {
+            console.warn('Error requesting pointer lock:', err);
+        }
+    };
+
     return (
         <>
             <Entity isPlayer ref={playerRef}>

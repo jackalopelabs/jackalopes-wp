@@ -70,6 +70,7 @@ declare global {
             updatePosition: (newPos: THREE.Vector3) => void;
         };
         __lastHitJackalope?: string;
+        jackalopesPreventAutoPointerLock?: boolean; // Add new property for pointer lock prevention
     }
 }
 
@@ -3870,6 +3871,74 @@ export function App() {
             localStorage.setItem(introKey, 'true');
         }
     };
+    
+    // Add this helper function near the top of the component
+    const requestPointerLockWithFallback = useCallback((containerElement?: HTMLElement | null) => {
+        try {
+            // Get the container element if not provided
+            const targetElement = containerElement || document.querySelector('.jackalopes-game-container');
+            
+            if (!targetElement) {
+                console.warn('Game container not found for pointer lock');
+                return;
+            }
+
+            // Check if pointer lock is prevented
+            if (window.jackalopesPreventAutoPointerLock) {
+                console.log('Pointer lock prevented by game settings');
+                return;
+            }
+
+            // Try container first
+            if (targetElement.requestPointerLock) {
+                targetElement.requestPointerLock();
+            }
+            // Fallback to document if container fails
+            else if (document.documentElement.requestPointerLock) {
+                document.documentElement.requestPointerLock();
+            }
+            // Last resort: try body
+            else if (document.body.requestPointerLock) {
+                document.body.requestPointerLock();
+            }
+            else {
+                console.warn('Pointer lock not supported on this device/browser');
+            }
+        } catch (err) {
+            console.warn('Error requesting pointer lock:', err);
+        }
+    }, []);
+
+    // Update the click handler
+    const handleGameClick = useCallback(() => {
+        if (!document.pointerLockElement && !window.jackalopesPreventAutoPointerLock) {
+            requestPointerLockWithFallback();
+        }
+    }, [requestPointerLockWithFallback]);
+
+    // Update pointer lock setup in useEffect
+    useEffect(() => {
+        // Only set up if we're in first person view
+        if (enableMultiplayer ? !playerCharacterInfo.thirdPerson : !thirdPersonView) {
+            const container = document.querySelector('.jackalopes-game-container');
+            
+            // Add click listener to container instead of document
+            if (container) {
+                container.addEventListener('click', handleGameClick);
+                
+                // Request initial pointer lock if needed
+                if (!document.pointerLockElement && !window.jackalopesPreventAutoPointerLock) {
+                    requestPointerLockWithFallback(container as HTMLElement);
+                }
+            }
+
+            return () => {
+                if (container) {
+                    container.removeEventListener('click', handleGameClick);
+                }
+            };
+        }
+    }, [enableMultiplayer, playerCharacterInfo.thirdPerson, thirdPersonView, handleGameClick, requestPointerLockWithFallback]);
     
     return (
         <>
