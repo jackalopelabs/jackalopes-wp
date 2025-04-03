@@ -395,9 +395,20 @@ function jackalopes_wp_game_shortcode($atts = []) {
             window.jackalopesIsMobile = true;
             // Set flag to prevent auto-pointer lock attempts on mobile
             window.jackalopesPreventPointerLock = true;
+            // Set flag for touch events
+            window.jackalopesUseTouch = true;
+            
+            // Add a touch handler to the document to ensure touch events are captured
+            document.addEventListener('touchstart', function() {
+                console.log('Touch event detected - game should be interactive now');
+                
+                // Dispatch a custom event that our game can listen for
+                var event = new CustomEvent('jackalopesTouchStart');
+                window.dispatchEvent(event);
+            }, { passive: true });
             
             // Create a no-op polyfill for requestPointerLock to prevent errors in the main game code
-            if (!Element.prototype.requestPointerLock) {
+            if (typeof Element.prototype.requestPointerLock !== 'function') {
                 Element.prototype.requestPointerLock = function() {
                     console.log('Pointer lock requested but not available on this device - using no-op polyfill');
                     return false;
@@ -405,14 +416,14 @@ function jackalopes_wp_game_shortcode($atts = []) {
             }
             
             // Apply to document and body to prevent errors
-            if (document.body && !document.body.requestPointerLock) {
+            if (document.body && typeof document.body.requestPointerLock !== 'function') {
                 document.body.requestPointerLock = function() {
                     console.log('Body pointer lock requested but not available - using no-op polyfill');
                     return false;
                 };
             }
             
-            if (!document.documentElement.requestPointerLock) {
+            if (document.documentElement && typeof document.documentElement.requestPointerLock !== 'function') {
                 document.documentElement.requestPointerLock = function() {
                     console.log('Document pointer lock requested but not available - using no-op polyfill');
                     return false;
@@ -420,12 +431,32 @@ function jackalopes_wp_game_shortcode($atts = []) {
             }
             
             // Also polyfill the exit function
-            if (!document.exitPointerLock) {
+            if (typeof document.exitPointerLock !== 'function') {
                 document.exitPointerLock = function() {
                     console.log('Exit pointer lock requested but not available - using no-op polyfill');
                     return false;
                 };
             }
+            
+            // Quick fix for keyboard focus issues on mobile
+            document.addEventListener('click', function(e) {
+                // Prevent default only for clicks on canvas elements to avoid issues
+                if (e.target && e.target.tagName && e.target.tagName.toLowerCase() === 'canvas') {
+                    console.log('Canvas clicked - ensuring mobile interaction works');
+                    e.preventDefault();
+                    
+                    // Dispatch mobile interaction event
+                    var event = new CustomEvent('jackalopesCanvasInteraction');
+                    window.dispatchEvent(event);
+                }
+            }, { passive: false });
+            
+            // Add a special flag that we can check for in the game code
+            window.jackalopesFixMobileInput = function() {
+                console.log('Mobile input fix applied');
+                // Any additional mobile-specific fixes can go here
+                return true;
+            };
         }
         
         // Start the initialization sequence
