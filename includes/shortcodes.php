@@ -117,12 +117,6 @@ function jackalopes_wp_game_shortcode($atts = []) {
          data-disable-threejs="<?php echo esc_attr($atts['disable_threejs']); ?>"
          style="width: <?php echo esc_attr($atts['width']); ?>; height: <?php echo esc_attr($atts['height']); ?>; position: relative; overflow: hidden;">
         
-        <!-- Loading indicator overlay -->
-        <div class="jackalopes-loading-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000;">
-            <div style="color: white; font-size: 18px; margin-bottom: 20px;">Loading Jackalopes Game...</div>
-            <div style="width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: jackalopes-spin 1s ease-in-out infinite;"></div>
-        </div>
-        
         <style>
             @keyframes jackalopes-spin {
                 to { transform: rotate(360deg); }
@@ -401,6 +395,37 @@ function jackalopes_wp_game_shortcode($atts = []) {
             window.jackalopesIsMobile = true;
             // Set flag to prevent auto-pointer lock attempts on mobile
             window.jackalopesPreventPointerLock = true;
+            
+            // Create a no-op polyfill for requestPointerLock to prevent errors in the main game code
+            if (!Element.prototype.requestPointerLock) {
+                Element.prototype.requestPointerLock = function() {
+                    console.log('Pointer lock requested but not available on this device - using no-op polyfill');
+                    return false;
+                };
+            }
+            
+            // Apply to document and body to prevent errors
+            if (document.body && !document.body.requestPointerLock) {
+                document.body.requestPointerLock = function() {
+                    console.log('Body pointer lock requested but not available - using no-op polyfill');
+                    return false;
+                };
+            }
+            
+            if (!document.documentElement.requestPointerLock) {
+                document.documentElement.requestPointerLock = function() {
+                    console.log('Document pointer lock requested but not available - using no-op polyfill');
+                    return false;
+                };
+            }
+            
+            // Also polyfill the exit function
+            if (!document.exitPointerLock) {
+                document.exitPointerLock = function() {
+                    console.log('Exit pointer lock requested but not available - using no-op polyfill');
+                    return false;
+                };
+            }
         }
         
         // Start the initialization sequence

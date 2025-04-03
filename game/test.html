@@ -22,7 +22,8 @@
   <body>
     <div id="game-container"></div>
     <script type="module">
-      import { initJackalopesGame } from './src/main.tsx';
+      // Import the main file to ensure it gets loaded
+      import './src/main.tsx';
 
       // Initialize the game when the page loads
       window.addEventListener('DOMContentLoaded', () => {
@@ -37,8 +38,8 @@
           sessionKey: 'TEST-SESSION'
         };
 
-        // Initialize the game in the container
-        initJackalopesGame('game-container', {
+        // Initialize the game in the container using the global function
+        window.initJackalopesGame('game-container', {
           server: 'ws://localhost:8082',
           fullscreen: true,
           sessionKey: 'TEST-SESSION'
