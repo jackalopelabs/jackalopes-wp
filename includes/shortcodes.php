@@ -116,13 +116,6 @@ function jackalopes_wp_game_shortcode($atts = []) {
          data-disable-ui="<?php echo esc_attr($atts['disable_ui']); ?>"
          data-disable-threejs="<?php echo esc_attr($atts['disable_threejs']); ?>"
          style="width: <?php echo esc_attr($atts['width']); ?>; height: <?php echo esc_attr($atts['height']); ?>; position: relative; overflow: hidden;">
-        <!-- Loading indicator and fallback content -->
-        <div class="jackalopes-loading-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.8); color: white; z-index: 5;">
-            <h2 style="margin-bottom: 20px;">Loading Jackalopes Game</h2>
-            <div class="jackalopes-loading-spinner" style="width: 50px; height: 50px; border: 5px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top-color: white; animation: jackalopes-spin 1s ease-in-out infinite;"></div>
-            <p style="margin-top: 20px;">Please wait while the game loads...</p>
-            <p style="font-size: 12px; margin-top: 30px; opacity: 0.7;">If the game doesn't load within 10 seconds, try refreshing the page or using a different browser.</p>
-        </div>
         
         <style>
             @keyframes jackalopes-spin {
