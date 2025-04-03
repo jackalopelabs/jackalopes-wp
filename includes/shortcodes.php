@@ -117,6 +117,12 @@ function jackalopes_wp_game_shortcode($atts = []) {
          data-disable-threejs="<?php echo esc_attr($atts['disable_threejs']); ?>"
          style="width: <?php echo esc_attr($atts['width']); ?>; height: <?php echo esc_attr($atts['height']); ?>; position: relative; overflow: hidden;">
         
+        <!-- Loading indicator overlay -->
+        <div class="jackalopes-loading-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000;">
+            <div style="color: white; font-size: 18px; margin-bottom: 20px;">Loading Jackalopes Game...</div>
+            <div style="width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: jackalopes-spin 1s ease-in-out infinite;"></div>
+        </div>
+        
         <style>
             @keyframes jackalopes-spin {
                 to { transform: rotate(360deg); }
@@ -228,32 +234,39 @@ function jackalopes_wp_game_shortcode($atts = []) {
                     // Enable pointer lock by removing the prevention flag
                     window.jackalopesPreventAutoPointerLock = false;
                     
-                    // Request pointer lock to start the game
-                    try {
-                        var targetElement = container;
-                        
-                        // Try container first
-                        if (targetElement.requestPointerLock) {
-                            targetElement.requestPointerLock();
+                    // Check if this is a mobile device
+                    var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1;
+                    
+                    // Request pointer lock to start the game, but only on desktop
+                    if (!isMobile) {
+                        try {
+                            var targetElement = container;
+                            
+                            // Try container first, checking if the function exists before calling it
+                            if (targetElement.requestPointerLock) {
+                                targetElement.requestPointerLock();
+                            }
+                            // Fallback to document if container fails
+                            else if (document.documentElement.requestPointerLock) {
+                                document.documentElement.requestPointerLock();
+                            }
+                            // Last resort: try body if the function exists
+                            else if (document.body && typeof document.body.requestPointerLock === 'function') {
+                                document.body.requestPointerLock();
+                            }
+                            else {
+                                console.warn('Pointer lock not supported on this device/browser');
+                            }
+                        } catch(err) {
+                            console.error('Error requesting pointer lock:', err);
                         }
-                        // Fallback to document if container fails
-                        else if (document.documentElement.requestPointerLock) {
-                            document.documentElement.requestPointerLock();
-                        }
-                        // Last resort: try body
-                        else if (document.body.requestPointerLock) {
-                            document.body.requestPointerLock();
-                        }
-                        else {
-                            console.warn('Pointer lock not supported on this device/browser');
-                        }
-                        
-                        // Dispatch a custom event for the game to handle
-                        var event = new CustomEvent('jackalopesGameStarted');
-                        window.dispatchEvent(event);
-                    } catch(err) {
-                        console.error('Error requesting pointer lock:', err);
+                    } else {
+                        console.log('Mobile device detected - skipping pointer lock');
                     }
+                    
+                    // Dispatch a custom event for the game to handle
+                    var event = new CustomEvent('jackalopesGameStarted');
+                    window.dispatchEvent(event);
                 });
             }
             
@@ -379,6 +392,16 @@ function jackalopes_wp_game_shortcode($atts = []) {
             console.error('WebGL context lost:', e);
             showJackalopesError('WebGL context lost. This may be due to limited graphics memory or browser restrictions.');
         }, false);
+        
+        // Check if this is a mobile device and apply appropriate settings
+        var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1;
+        if (isMobile) {
+            console.log('Mobile device detected - applying mobile-specific settings');
+            // Set global flag for mobile devices that the game code can check
+            window.jackalopesIsMobile = true;
+            // Set flag to prevent auto-pointer lock attempts on mobile
+            window.jackalopesPreventPointerLock = true;
+        }
         
         // Start the initialization sequence
         setTimeout(function() {
