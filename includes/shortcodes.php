@@ -198,23 +198,98 @@ function jackalopes_wp_game_shortcode($atts = []) {
             
             console.log('Initializing Jackalopes game in container: <?php echo esc_js($game_id); ?>');
             
-            // Longer delay for initialization
-            setTimeout(function() {
-                try {
-                    window.initJackalopesGame('<?php echo esc_js($game_id); ?>', {
-                        fullscreen: <?php echo $atts['fullscreen'] === 'true' ? 'true' : 'false'; ?>,
-                        serverUrl: '<?php echo esc_js($atts['server']); ?>',
-                        disableUi: <?php echo $atts['disable_ui'] === 'true' ? 'true' : 'false'; ?>,
-                        disableThreejs: <?php echo $atts['disable_threejs'] === 'true' ? 'true' : 'false'; ?>,
-                        preventPointerLock: true
-                    });
-                    jackalopesInitSuccess = true;
-                    console.log('Jackalopes game initialized successfully');
-                } catch (err) {
-                    console.error('Error initializing Jackalopes game:', err);
-                    showJackalopesError('Error initializing game: ' + err.message);
+            // Check if this is a mobile device
+            var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1;
+            
+            if (isMobile) {
+                console.log('Mobile device detected - applying optimized settings');
+                
+                // Create global settings for mobile
+                window.jackalopesIsMobile = true;
+                window.jackalopesUseTouch = true;
+                window.jackalopesPreventPointerLock = true;
+                window.jackalopesDisableEffects = true; // Tell the game to disable heavy effects
+                
+                // Create backup polyfills for pointer lock
+                if (typeof Element.prototype.requestPointerLock !== 'function') {
+                    Element.prototype.requestPointerLock = function() { return false; };
                 }
-            }, 300);
+                if (document.body && typeof document.body.requestPointerLock !== 'function') {
+                    document.body.requestPointerLock = function() { return false; };
+                }
+                if (document.documentElement && typeof document.documentElement.requestPointerLock !== 'function') {
+                    document.documentElement.requestPointerLock = function() { return false; };
+                }
+                if (typeof document.exitPointerLock !== 'function') {
+                    document.exitPointerLock = function() { return false; };
+                }
+                
+                // Add mobile touch event listener
+                document.addEventListener('touchstart', function() {
+                    console.log('Touch event detected - activating mobile mode');
+                    window.dispatchEvent(new CustomEvent('jackalopesTouchStart'));
+                }, { passive: true });
+                
+                // Longer delay for initialization on mobile
+                setTimeout(function() {
+                    try {
+                        // Initialize with mobile optimizations
+                        window.initJackalopesGame('<?php echo esc_js($game_id); ?>', {
+                            fullscreen: false, // Disable fullscreen on mobile
+                            serverUrl: '<?php echo esc_js($atts['server']); ?>',
+                            disableUi: <?php echo $atts['disable_ui'] === 'true' ? 'true' : 'false'; ?>,
+                            disableThreejs: <?php echo $atts['disable_threejs'] === 'true' ? 'true' : 'false'; ?>,
+                            preventPointerLock: true,
+                            isMobile: true,
+                            mobileFriendly: true,
+                            lowQuality: true
+                        });
+                        
+                        jackalopesInitSuccess = true;
+                        
+                        // After initialization, force canvas to be visible
+                        setTimeout(function() {
+                            var canvas = container.querySelector('canvas');
+                            if (canvas) {
+                                canvas.style.display = 'block';
+                                canvas.style.position = 'absolute';
+                                canvas.style.top = '0';
+                                canvas.style.left = '0';
+                                canvas.style.width = '100%';
+                                canvas.style.height = '100%';
+                                canvas.style.opacity = '1';
+                                console.log('Mobile: Made canvas visible');
+                            } else {
+                                console.warn('Mobile: Canvas not found after 500ms');
+                            }
+                        }, 500);
+                        
+                    } catch (err) {
+                        console.error('Error initializing Jackalopes game on mobile:', err);
+                        showJackalopesError('Error initializing game on mobile: ' + err.message);
+                    }
+                }, 500);
+                
+            } else {
+                // Desktop initialization
+                setTimeout(function() {
+                    try {
+                        // Regular initialization for desktop
+                        window.initJackalopesGame('<?php echo esc_js($game_id); ?>', {
+                            fullscreen: <?php echo $atts['fullscreen'] === 'true' ? 'true' : 'false'; ?>,
+                            serverUrl: '<?php echo esc_js($atts['server']); ?>',
+                            disableUi: <?php echo $atts['disable_ui'] === 'true' ? 'true' : 'false'; ?>,
+                            disableThreejs: <?php echo $atts['disable_threejs'] === 'true' ? 'true' : 'false'; ?>,
+                            preventPointerLock: true
+                        });
+                        jackalopesInitSuccess = true;
+                        console.log('Jackalopes game initialized successfully');
+                    } catch (err) {
+                        console.error('Error initializing Jackalopes game:', err);
+                        showJackalopesError('Error initializing game: ' + err.message);
+                    }
+                }, 300);
+            }
             
             // Add start game button functionality
             var startGameOverlay = container.querySelector('.start-game-overlay');
