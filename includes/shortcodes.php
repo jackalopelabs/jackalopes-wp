@@ -252,6 +252,7 @@ function jackalopes_wp_game_shortcode($atts = []) {
                         height: ${container.style.height || '600px'} !important;
                         min-height: 300px !important;
                         touch-action: none !important;
+                        background-color: #111 !important;
                     }
                     #${container.id} canvas {
                         position: absolute !important;
@@ -269,6 +270,24 @@ function jackalopes_wp_game_shortcode($atts = []) {
                         position: absolute !important;
                         z-index: 20 !important;
                     }
+                    /* Hide duplicate fullscreen buttons */
+                    #${container.id} .fullscreen-button:not(:first-child) {
+                        display: none !important;
+                    }
+                    /* Style the fullscreen button properly for mobile */
+                    #${container.id} .fullscreen-button {
+                        background: rgba(0, 0, 0, 0.7) !important;
+                        color: white !important;
+                        border: none !important;
+                        border-radius: 4px !important;
+                        padding: 8px !important;
+                        position: absolute !important;
+                        top: 10px !important;
+                        right: 10px !important;
+                        z-index: 50 !important;
+                        width: auto !important;
+                        height: auto !important;
+                    }
                 `;
                 document.head.appendChild(mobileStyles);
                 
@@ -276,6 +295,41 @@ function jackalopes_wp_game_shortcode($atts = []) {
                 container.style.width = '100%';
                 container.style.height = container.style.height || '600px';
                 container.style.minHeight = '300px';
+                container.style.backgroundColor = '#111';
+                
+                // Also add some dynamic content for mobile to ensure something is visible
+                var mobileOverlay = document.createElement('div');
+                mobileOverlay.className = 'jackalopes-mobile-overlay';
+                mobileOverlay.style.position = 'absolute';
+                mobileOverlay.style.top = '50%';
+                mobileOverlay.style.left = '50%';
+                mobileOverlay.style.transform = 'translate(-50%, -50%)';
+                mobileOverlay.style.textAlign = 'center';
+                mobileOverlay.style.color = 'white';
+                mobileOverlay.style.zIndex = '25';
+                mobileOverlay.style.backgroundColor = 'rgba(0,0,0,0.7)';
+                mobileOverlay.style.padding = '20px';
+                mobileOverlay.style.borderRadius = '10px';
+                mobileOverlay.style.maxWidth = '80%';
+                mobileOverlay.innerHTML = `
+                    <h2 style="margin: 0 0 15px 0; font-size: 24px;">Jackalopes Game</h2>
+                    <p style="margin: 0 0 20px 0;">Tap to play the 3D game</p>
+                    <button class="jackalopes-mobile-play" style="background: #4c8bf5; color: white; border: none; border-radius: 4px; padding: 12px 20px; font-weight: bold; font-size: 16px;">Play Now</button>
+                `;
+                container.appendChild(mobileOverlay);
+                
+                // Add tap handler to mobile overlay
+                var playButton = mobileOverlay.querySelector('.jackalopes-mobile-play');
+                if (playButton) {
+                    playButton.addEventListener('click', function() {
+                        // Hide the overlay
+                        mobileOverlay.style.display = 'none';
+                        
+                        // Activate the game
+                        var event = new CustomEvent('jackalopesGameStarted');
+                        window.dispatchEvent(event);
+                    });
+                }
                 
                 // Longer delay for initialization on mobile
                 setTimeout(function() {
@@ -294,11 +348,20 @@ function jackalopes_wp_game_shortcode($atts = []) {
                         
                         jackalopesInitSuccess = true;
                         
-                        // Setup repeated checks to force canvas visibility
+                        // Setup repeated checks to force canvas visibility and remove duplicates
                         var visibilityCheckCount = 0;
                         var visibilityCheckInterval = setInterval(function() {
                             var canvases = container.querySelectorAll('canvas');
                             console.log('Mobile visibility check: Found ' + canvases.length + ' canvas elements');
+                            
+                            // Check for duplicate fullscreen buttons and remove extras
+                            var fullscreenButtons = container.querySelectorAll('.fullscreen-button');
+                            if (fullscreenButtons.length > 1) {
+                                console.log('Found ' + fullscreenButtons.length + ' fullscreen buttons - keeping only the first one');
+                                for (var i = 1; i < fullscreenButtons.length; i++) {
+                                    fullscreenButtons[i].style.display = 'none';
+                                }
+                            }
                             
                             canvases.forEach(function(canvas, index) {
                                 if (canvas.id !== 'jackalopes-mobile-canvas') {
@@ -312,11 +375,15 @@ function jackalopes_wp_game_shortcode($atts = []) {
                                     canvas.style.zIndex = '10';
                                     canvas.style.opacity = '1';
                                     canvas.style.visibility = 'visible';
+                                    canvas.style.backgroundColor = '#111';
                                     
-                                    // Remove our placeholder if the real canvas exists
+                                    // Remove our placeholder when the real canvas exists and has content
                                     var placeholder = document.getElementById('jackalopes-mobile-canvas');
                                     if (placeholder) {
-                                        placeholder.style.display = 'none';
+                                        setTimeout(function() {
+                                            // Only hide the placeholder after the game canvas has had time to render
+                                            placeholder.style.display = 'none';
+                                        }, 1000);
                                     }
                                     
                                     console.log('Mobile: Applied visibility style to canvas #' + index);
