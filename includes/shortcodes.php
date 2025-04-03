@@ -61,6 +61,11 @@ function jackalopes_wp_game_shortcode($atts = []) {
             <div class="jackalopes-loading-message">Loading Jackalopes...</div>
         </div>
         
+        <!-- Start Game button - initially visible -->
+        <div class="start-game-overlay">
+            <button class="start-game-button">Start Game</button>
+        </div>
+        
         <!-- Fullscreen button -->
         <button class="fullscreen-button fixed-ui fixed-top-right">
             Fullscreen
@@ -116,6 +121,35 @@ function jackalopes_wp_game_shortcode($atts = []) {
             #<?php echo esc_attr($game_id); ?> .fullscreen-button:hover {
                 background-color: rgba(0, 0, 0, 0.8);
             }
+            #<?php echo esc_attr($game_id); ?> .start-game-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                background-color: rgba(0, 0, 0, 0.7);
+                z-index: 150;
+            }
+            #<?php echo esc_attr($game_id); ?> .start-game-button {
+                background-color: #4CAF50;
+                color: white;
+                padding: 16px 32px;
+                border: none;
+                border-radius: 8px;
+                font-size: 24px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-weight: bold;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            }
+            #<?php echo esc_attr($game_id); ?> .start-game-button:hover {
+                background-color: #45a049;
+                transform: scale(1.05);
+                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+            }
             #<?php echo esc_attr($game_id); ?> .jackalopes-loading {
                 position: absolute;
                 top: 0;
@@ -148,13 +182,17 @@ function jackalopes_wp_game_shortcode($atts = []) {
     <script>
         // Wait for the module to be fully loaded
         setTimeout(function() {
+            // Set flag to prevent auto-pointer lock
+            window.jackalopesPreventAutoPointerLock = true;
+            
             // Initialize the game when the DOM is fully loaded
             if (typeof window.initJackalopesGame === 'function') {
                 window.initJackalopesGame('<?php echo esc_js($game_id); ?>', {
                     fullscreen: <?php echo $atts['fullscreen'] === 'true' ? 'true' : 'false'; ?>,
                     serverUrl: '<?php echo esc_js($atts['server']); ?>',
                     disableUi: <?php echo $atts['disable_ui'] === 'true' ? 'true' : 'false'; ?>,
-                    disableThreejs: <?php echo $atts['disable_threejs'] === 'true' ? 'true' : 'false'; ?>
+                    disableThreejs: <?php echo $atts['disable_threejs'] === 'true' ? 'true' : 'false'; ?>,
+                    preventPointerLock: true
                 });
                 
                 // Add fullscreen button functionality
@@ -185,6 +223,34 @@ function jackalopes_wp_game_shortcode($atts = []) {
                             } else if (document.msExitFullscreen) {
                                 document.msExitFullscreen();
                             }
+                        }
+                    });
+                }
+                
+                // Add start game button functionality
+                var startGameOverlay = container.querySelector('.start-game-overlay');
+                var startGameBtn = container.querySelector('.start-game-button');
+                
+                if (startGameBtn && startGameOverlay) {
+                    startGameBtn.addEventListener('click', function() {
+                        // Hide the overlay
+                        startGameOverlay.style.display = 'none';
+                        
+                        // Enable pointer lock by removing the prevention flag
+                        window.jackalopesPreventAutoPointerLock = false;
+                        
+                        // Request pointer lock to start the game
+                        try {
+                            container.requestPointerLock = container.requestPointerLock || 
+                                                          container.mozRequestPointerLock || 
+                                                          container.webkitRequestPointerLock;
+                            container.requestPointerLock();
+                            
+                            // Dispatch a custom event for the game to handle
+                            var event = new CustomEvent('jackalopesGameStarted');
+                            window.dispatchEvent(event);
+                        } catch(err) {
+                            console.error('Error requesting pointer lock:', err);
                         }
                     });
                 }
