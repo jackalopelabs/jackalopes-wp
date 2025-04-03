@@ -230,6 +230,53 @@ function jackalopes_wp_game_shortcode($atts = []) {
                     window.dispatchEvent(new CustomEvent('jackalopesTouchStart'));
                 }, { passive: true });
                 
+                // Create a placeholder canvas to ensure visibility
+                var mobileCanvas = document.createElement('canvas');
+                mobileCanvas.id = 'jackalopes-mobile-canvas';
+                mobileCanvas.style.position = 'absolute';
+                mobileCanvas.style.top = '0';
+                mobileCanvas.style.left = '0';
+                mobileCanvas.style.width = '100%';
+                mobileCanvas.style.height = '100%';
+                mobileCanvas.style.zIndex = '5';
+                mobileCanvas.style.backgroundColor = '#111';
+                container.appendChild(mobileCanvas);
+                
+                // Add mobile-specific styles
+                var mobileStyles = document.createElement('style');
+                mobileStyles.textContent = `
+                    #${container.id} {
+                        position: relative !important;
+                        overflow: hidden !important;
+                        width: 100% !important;
+                        height: ${container.style.height || '600px'} !important;
+                        min-height: 300px !important;
+                        touch-action: none !important;
+                    }
+                    #${container.id} canvas {
+                        position: absolute !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        width: 100% !important;
+                        height: 100% !important;
+                        display: block !important;
+                        z-index: 10 !important;
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                        background-color: #111 !important;
+                    }
+                    #${container.id} .game-ui {
+                        position: absolute !important;
+                        z-index: 20 !important;
+                    }
+                `;
+                document.head.appendChild(mobileStyles);
+                
+                // Force canvas to be a specific size to help rendering
+                container.style.width = '100%';
+                container.style.height = container.style.height || '600px';
+                container.style.minHeight = '300px';
+                
                 // Longer delay for initialization on mobile
                 setTimeout(function() {
                     try {
@@ -247,20 +294,38 @@ function jackalopes_wp_game_shortcode($atts = []) {
                         
                         jackalopesInitSuccess = true;
                         
-                        // After initialization, force canvas to be visible
-                        setTimeout(function() {
-                            var canvas = container.querySelector('canvas');
-                            if (canvas) {
-                                canvas.style.display = 'block';
-                                canvas.style.position = 'absolute';
-                                canvas.style.top = '0';
-                                canvas.style.left = '0';
-                                canvas.style.width = '100%';
-                                canvas.style.height = '100%';
-                                canvas.style.opacity = '1';
-                                console.log('Mobile: Made canvas visible');
-                            } else {
-                                console.warn('Mobile: Canvas not found after 500ms');
+                        // Setup repeated checks to force canvas visibility
+                        var visibilityCheckCount = 0;
+                        var visibilityCheckInterval = setInterval(function() {
+                            var canvases = container.querySelectorAll('canvas');
+                            console.log('Mobile visibility check: Found ' + canvases.length + ' canvas elements');
+                            
+                            canvases.forEach(function(canvas, index) {
+                                if (canvas.id !== 'jackalopes-mobile-canvas') {
+                                    // Force the proper game canvas to be visible
+                                    canvas.style.display = 'block';
+                                    canvas.style.position = 'absolute';
+                                    canvas.style.top = '0';
+                                    canvas.style.left = '0';
+                                    canvas.style.width = '100%';
+                                    canvas.style.height = '100%';
+                                    canvas.style.zIndex = '10';
+                                    canvas.style.opacity = '1';
+                                    canvas.style.visibility = 'visible';
+                                    
+                                    // Remove our placeholder if the real canvas exists
+                                    var placeholder = document.getElementById('jackalopes-mobile-canvas');
+                                    if (placeholder) {
+                                        placeholder.style.display = 'none';
+                                    }
+                                    
+                                    console.log('Mobile: Applied visibility style to canvas #' + index);
+                                }
+                            });
+                            
+                            visibilityCheckCount++;
+                            if (visibilityCheckCount >= 10) {
+                                clearInterval(visibilityCheckInterval);
                             }
                         }, 500);
                         
